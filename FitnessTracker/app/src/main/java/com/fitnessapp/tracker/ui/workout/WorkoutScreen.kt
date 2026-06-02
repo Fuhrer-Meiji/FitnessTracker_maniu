@@ -1,18 +1,14 @@
 package com.fitnessapp.tracker.ui.workout
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.fitnessapp.tracker.ui.workout.components.CalendarView
 import com.fitnessapp.tracker.util.DateUtils
 
 @Composable
@@ -36,10 +32,8 @@ private fun WorkoutHomeScreen(
     onStartWorkout: () -> Unit
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp)
+        modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(4.dp))
         Row(
@@ -55,79 +49,27 @@ private fun WorkoutHomeScreen(
             }
         }
 
+        Spacer(Modifier.weight(0.6f))
+
         Card(
             onClick = onStartWorkout,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            modifier = Modifier.size(200.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
             shape = MaterialTheme.shapes.large
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text("+", fontSize = 22.sp, fontWeight = FontWeight.Light,
+                Text("+", fontSize = 36.sp, fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onPrimary)
-                Text("开始训练", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                Spacer(Modifier.height(8.dp))
+                Text("开始训练", fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onPrimary)
-                Text("选择动作，记录组数", fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f))
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            CalendarView(
-                workoutDates = state.workoutDates,
-                dailyFrequency = state.dailyFrequency,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-
-        val todayStart = DateUtils.getStartOfDay(System.currentTimeMillis())
-        val hasTodayWorkout = todayStart in state.workoutDates
-
-        if (hasTodayWorkout) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("今日训练", style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 10.dp))
-                    Text("已完成训练，继续加油！", style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        } else if (state.workoutDates.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("今日训练", style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 10.dp))
-                    Text("今天还没有训练记录", style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        } else {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("今日训练", style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(bottom = 10.dp))
-                    Text("开始你的第一次训练吧", style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
+        Spacer(Modifier.weight(1f))
     }
 }

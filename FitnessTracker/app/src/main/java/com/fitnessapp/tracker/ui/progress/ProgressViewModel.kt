@@ -24,6 +24,7 @@ data class ProgressUiState(
     val selectedExercise: Exercise? = null,
     val strengthTrendData: List<Pair<String, Double>> = emptyList(),
     val dailyFrequency: Map<Int, Int> = emptyMap(),
+    val workoutDates: Set<Long> = emptySet(),
     val currentUnit: String = "kg"
 )
 
@@ -100,7 +101,10 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 c.get(Calendar.DAY_OF_MONTH)
             }.mapValues { it.value.size }
 
-            _state.update { it.copy(dailyFrequency = dayCounts) }
+            _state.update { it.copy(
+                dailyFrequency = dayCounts,
+                workoutDates = workouts.map { DateUtils.getStartOfDay(it.date) }.toSet()
+            )}
         }
     }
 

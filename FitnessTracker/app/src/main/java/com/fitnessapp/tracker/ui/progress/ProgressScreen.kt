@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import com.fitnessapp.tracker.ui.workout.components.CalendarView
 import java.util.*
 
 @Composable
@@ -43,6 +44,18 @@ fun ProgressScreen(
             StatCard("本周训练", "${state.weeklyCount}", Modifier.weight(1f))
             StatCard("本月训练", "${state.monthlyCount}", Modifier.weight(1f))
             StatCard("总训练", "${state.totalCount}", Modifier.weight(1f))
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            CalendarView(
+                workoutDates = state.workoutDates,
+                dailyFrequency = state.dailyFrequency,
+                modifier = Modifier.padding(16.dp)
+            )
         }
 
         StrengthTrendCard(
