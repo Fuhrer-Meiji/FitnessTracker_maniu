@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>健身 App — 设计重构版</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+    background: #f5f5f7;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 20px 10px;
+  }
+  .phone {
+    width: 375px;
+    min-height: 700px;
+    background: var(--bg, #f8f8fc);
+    border-radius: 32px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s;
+  }
+
+  :root {
+    --primary: #6C63FF;
+    --primary-light: #8B83FF;
+    --primary-bg: #f0eeff;
+    --bg: #f8f8fc;
+    --card-bg: #ffffff;
+    --text: #1a1a2e;
+    --text-secondary: #8e8ea0;
+    --text-tertiary: #b0b0c0;
+    --border: #eeeef4;
+    --danger: #ff6b6b;
+    --success: #2ecc71;
+    --nav-bg: rgba(255,255,255,0.92);
+    --shadow: 0 2px 16px rgba(0,0,0,0.06);
+    --radius: 14px;
+    --radius-sm: 10px;
+    --radius-lg: 18px;
+  }
+
+  .status-bar { padding: 14px 22px 4px; display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); letter-spacing: 0.2px; background: var(--bg); }
+  .app-content { flex: 1; overflow-y: auto; padding: 0 18px 8px; min-height: 540px; scroll-behavior: smooth; }
+  .app-content::-webkit-scrollbar { width: 0; }
+
+  .bottom-nav {
+    display: flex; background: var(--nav-bg);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border); padding: 4px 0 10px;
+  }
+  .nav-item {
+    flex: 1; text-align: center; font-size: 10px; color: var(--text-tertiary); cursor: pointer;
+    padding: 6px 0 4px; transition: color 0.2s; position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-item.active { color: var(--primary); }
+  .nav-item .icon { font-size: 22px; margin-bottom: 1px; }
+  .nav-item .label { font-size: 10px; font-weight: 500; letter-spacing: 0.3px; }
+  .nav-item.active::after {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 20px; height: 2.5px; background: var(--primary); border-radius: 2px;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Typography */
+  .section-title { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; }
+  .section-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .stat-value { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .stat-label { font-size: 11px; color: var(--text-secondary); font-weight: 400; margin-top: 2px; }
+
+  /* Components */
+  .btn-start {
+    background: var(--primary); border-radius: var(--radius-lg); padding: 18px; text-align: center;
+    color: white; cursor: pointer; margin-bottom: 16px; transition: transform 0.15s, opacity 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-start:active { transform: scale(0.97); opacity: 0.9; }
+  .btn-start .plus { font-size: 22px; font-weight: 300; margin-bottom: 2px; line-height: 1; }
+  .btn-start .title { font-size: 16px; font-weight: 600; letter-spacing: 0.3px; }
+  .btn-start .sub { font-size: 11px; opacity: 0.7; margin-top: 3px; font-weight: 400; }
+
+  .card {
+    background: var(--card-bg); border-radius: var(--radius); padding: 16px;
+    margin-bottom: 10px; box-shadow: var(--shadow); transition: all 0.3s;
+  }
+  .card-active { border-left: 3px solid var(--primary); }
+  .card-done { border-left: 3px solid var(--success); opacity: 0.85; }
+  .card-done .card-title { color: var(--text-secondary); }
+
+  .card-title { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
+  .card-sub { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+
+  .set-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .set-row:last-of-type { border-bottom: none; }
+  .set-row .num { width: 28px; color: var(--text-tertiary); font-size: 11px; font-weight: 500; }
+  .set-row .val1 { font-weight: 600; color: var(--text); }
+  .set-row .val2 { color: var(--text-secondary); }
+  .set-row .del { color: var(--text-tertiary); cursor: pointer; font-size: 12px; padding: 4px; }
+
+  .stepper { display: flex; align-items: center; justify-content: center; gap: 14px; }
+  .stepper .btn {
+    width: 38px; height: 38px; border-radius: 50%; background: var(--primary-bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 500; color: var(--primary); cursor: pointer;
+    transition: background 0.15s; -webkit-tap-highlight-color: transparent; user-select: none;
+  }
+  .stepper .btn:active { background: var(--primary); color: white; }
+  .stepper .value { font-size: 26px; font-weight: 700; min-width: 56px; text-align: center; color: var(--text); }
+
+  .record-panel {
+    background: var(--primary-bg); border-radius: var(--radius-sm);
+    padding: 14px; margin-top: 10px;
+  }
+  .record-panel .hint { font-size: 10px; color: var(--text-secondary); text-align: center; margin-bottom: 10px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .btn-record {
+    background: var(--primary); color: white; text-align: center; padding: 11px;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: transform 0.15s; -webkit-tap-highlight-color: transparent;
+  }
+  .btn-record:active { transform: scale(0.97); }
+  .btn-add-ex {
+    text-align: center; color: var(--primary); font-size: 13px; font-weight: 500;
+    padding: 12px; border: 1.5px dashed var(--primary); border-radius: var(--radius-sm);
+    cursor: pointer; transition: background 0.15s; margin-bottom: 14px;
+  }
+  .btn-add-ex:active { background: var(--primary-bg); }
+  .btn-end {
+    background: rgba(255,107,107,0.1); color: var(--danger); padding: 7px 18px;
+    border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-end:active { background: rgba(255,107,107,0.2); }
+  .timer-text { font-size: 24px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+
+  /* Settings */
+  .settings-group { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 10px; }
+  .settings-item {
+    display: flex; justify-content: space-between; align-items: center; padding: 14px 16px;
+    cursor: pointer; transition: background 0.15s; border-bottom: 1px solid var(--border);
+  }
+  .settings-item:last-child { border-bottom: none; }
+  .settings-item:active { background: var(--primary-bg); }
+  .settings-item .left { display: flex; align-items: center; gap: 12px; }
+  .settings-item .icon-wrap {
+    width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--primary-bg);
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+  }
+  .settings-item .title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .settings-item .desc { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+  .settings-item .right-arrow { color: var(--text-tertiary); font-size: 16px; }
+
+  /* Calendar */
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); text-align: center; gap: 3px; font-size: 12px; }
+  .cal-grid .day-label { color: var(--text-tertiary); font-size: 10px; font-weight: 600; padding: 6px 0 4px; letter-spacing: 0.5px; }
+  .cal-grid .day {
+    padding: 6px 0; border-radius: 50%; cursor: pointer; font-size: 12px; font-weight: 500;
+    color: var(--text); transition: background 0.15s; position: relative;
+  }
+  .cal-grid .day.other { color: var(--text-tertiary); }
+  .cal-grid .day.has-workout { color: var(--primary); font-weight: 600; }
+  .cal-grid .day.has-workout::after {
+    content: ''; width: 4px; height: 4px; background: var(--primary); border-radius: 50%;
+    position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+  }
+  .cal-grid .day.today { background: var(--primary); color: white; font-weight: 600; }
+  .cal-grid .day.today::after { background: white; }
+  .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .cal-nav .month { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.2px; }
+  .cal-nav .arrow { color: var(--primary); font-size: 14px; cursor: pointer; padding: 4px 8px; }
+
+  /* Progress */
+  .stat-grid { display: flex; gap: 8px; margin: 4px 0 16px; }
+  .stat-card {
+    flex: 1; background: var(--card-bg); border-radius: var(--radius-sm); padding: 12px 8px;
+    text-align: center; box-shadow: var(--shadow);
+  }
+
+  .badge {
+    display: inline-block; font-size: 8px; padding: 1px 6px; border-radius: 4px;
+    font-weight: 600; letter-spacing: 0.3px; margin-left: 4px; text-transform: uppercase;
+  }
+  .badge-strength { background: #e8f5e9; color: #2e7d32; }
+  .badge-reps { background: #e3f2fd; color: #1565c0; }
+  .badge-duration { background: #fff3e0; color: #e65100; }
+
+  .ex-item { display: flex; align-items: center; gap: 10px; padding: 9px 6px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+  .ex-item:hover { background: var(--primary-bg); }
+  .ex-item .icon-box { width: 34px; height: 34px; background: var(--primary-bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .ex-item .name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .ex-item .part { font-size: 11px; color: var(--text-secondary); }
+  .ex-part-label { font-size: 10px; color: var(--text-tertiary); font-weight: 600; margin: 6px 0 3px; padding-left: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .workout-summary-item { border-left: 3px solid var(--primary); padding-left: 10px; margin-bottom: 10px; }
+  .workout-summary-item .name { font-weight: 600; font-size: 13px; color: var(--text); }
+  .workout-summary-item .detail { color: var(--text-secondary); font-size: 11px; margin-top: 2px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); z-index: 100; align-items: flex-end; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal-sheet { background: var(--card-bg); border-radius: 22px 22px 0 0; width: 100%; padding: 20px 18px 34px; max-height: 75%; overflow-y: auto; animation: slideUp 0.35s cubic-bezier(0.32,0.72,0,1); }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-sheet .handle { width: 32px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label { font-size: 11px; color: var(--text-secondary); margin-bottom: 5px; display: block; font-weight: 500; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 14px; outline: none; transition: border-color 0.2s; background: var(--card-bg); color: var(--text);
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; background: var(--primary-bg);
+  }
+  .chip.selected { border-color: var(--primary); background: white; }
+
+  .ex-lib-item { display: flex; align-items: center; gap: 10px; padding: 9px 6px; border-bottom: 1px solid var(--border); }
+  .ex-lib-item:last-child { border-bottom: none; }
+  .ex-lib-item .del-btn { margin-left: auto; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,107,107,0.1); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+  .ex-lib-item:hover .del-btn { opacity: 1; }
+  .ex-lib-item.preset { opacity: 0.55; }
+  .ex-lib-item.preset .del-btn { display: none; }
+
+  .toast-msg {
+    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: white; padding: 8px 18px; border-radius: 8px;
+    font-size: 12px; font-weight: 500; z-index: 200;
+  }
+
+  /* Theme picker */
+  .theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .theme-option {
+    text-align: center; cursor: pointer; padding: 12px 6px; border-radius: var(--radius-sm);
+    border: 2px solid transparent; transition: all 0.2s;
+  }
+  .theme-option.active { border-color: var(--primary); background: var(--primary-bg); }
+  .theme-swatch { width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .theme-name { font-size: 10px; color: var(--text-secondary); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+  <div class="status-bar"><span>9:41</span><span>📶 🔋</span></div>
+
+  <div class="app-content" id="appContent">
+    <!-- ============ TRAINING PAGE ============ -->
+    <div class="page active" id="page-workout">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 14px">
+        <div><div class="section-title">训练</div><div class="section-sub">6月2日 · 本周 2 次</div></div>
+        <div class="stat-value" style="font-size:14px;color:var(--text-secondary);font-weight:400" id="workoutCount">0 次</div>
+      </div>
+      <div class="btn-start" onclick="startWorkout()">
+        <div class="plus">+</div>
+        <div class="title">开始训练</div>
+        <div class="sub">选择动作，记录组数</div>
+      </div>
+      <div class="card">
+        <div class="cal-nav">
+          <span class="arrow">←</span>
+          <span class="month">2026 年 6 月</span>
+          <span class="arrow">→</span>
+        </div>
+        <div class="cal-grid">
+          <div class="day-label">一</div><div class="day-label">二</div><div class="day-label">三</div><div class="day-label">四</div><div class="day-label">五</div><div class="day-label">六</div><div class="day-label">日</div>
+          <div class="day other">26</div><div class="day other">27</div><div class="day other">28</div><div class="day other">29</div><div class="day other">30</div><div class="day other">31</div><div class="day">1</div>
+          <div class="day today has-workout" onclick="showWorkoutDetail()">2</div><div class="day">3</div><div class="day">4</div>
+          <div class="day has-workout" onclick="showWorkoutDetail()">5</div><div class="day">6</div><div class="day">7</div>
+          <div class="day">8</div><div class="day">9</div><div class="day has-workout" onclick="showWorkoutDetail()">10</div>
+          <div class="day">11</div><div class="day">12</div><div class="day">13</div><div class="day">14</div>
+          <div class="day">15</div><div class="day has-workout" onclick="showWorkoutDetail()">16</div><div class="day">17</div><div class="day">18</div><div class="day">19</div><div class="day">20</div><div class="day">21</div>
+          <div class="day">22</div><div class="day">23</div><div class="day">24</div><div class="day">25</div><div class="day">26</div><div class="day">27</div><div class="day">28</div>
+          <div class="day">29</div><div class="day">30</div><div class="day other">1</div><div class="day other">2</div><div class="day other">3</div><div class="day other">4</div><div class="day other">5</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size:14px;margin-bottom:10px">今日训练</div>
+        <div class="workout-summary-item" style="border-left-color:var(--primary)"><div class="name">卧推</div><div class="detail">60kg×12 · 60kg×10 · 65kg×8</div></div>
+        <div class="workout-summary-item" style="border-left-color:var(--success)"><div class="name">深蹲</div><div class="detail">80kg×10 · 85kg×8</div></div>
+      </div>
+    </div>
+
+    <!-- ============ RECORDING PAGE ============ -->
+    <div class="page" id="page-recording">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:4px 0 14px">
+        <div>
+          <div class="timer-text" id="timerDisplay">00:05:32</div>
+          <div class="section-sub">训练时长</div>
+        </div>
+        <div class="btn-end" onclick="endWorkout()">结束训练</div>
+      </div>
+      <div id="exerciseCardsContainer"></div>
+      <div class="btn-add-ex" onclick="showExercisePicker()">+ 添加新动作</div>
+    </div>
+
+    <!-- ============ PROGRESS PAGE ============ -->
+    <div class="page" id="page-progress">
+      <div style="margin:4px 0 14px"><div class="section-title">进度</div><div class="section-sub">你的训练数据概览</div></div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-value" style="font-size:20px">3</div><div class="stat-label">本周训练</div></div>
+        <div class="stat-card"><div class="stat-value" style="font-size:20px">12</div><div class="stat-label">本月训练</div></div>
+        <div class="stat-card"><div class="stat-value" style="font-size:20px">48</div><div class="stat-label">总训练</div></div>
+      </div>
+      <div class="card" style="padding:12px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title" style="font-size:14px">卧推 · 力量趋势</div>
+          <span style="font-size:11px;color:var(--text-secondary);cursor:pointer">切换 ▾</span>
+        </div>
+      </div>
+      <div class="card">
+        <svg width="100%" height="80" viewBox="0 0 280 80" style="display:block">
+          <polyline points="0,64 35,60 70,54 105,42 140,38 175,26 210,30 245,22 280,20" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="0" cy="64" r="3" fill="var(--primary)"/><circle cx="35" cy="60" r="3" fill="var(--primary)"/><circle cx="70" cy="54" r="3" fill="var(--primary)"/><circle cx="105" cy="42" r="3" fill="var(--primary)"/><circle cx="140" cy="38" r="3" fill="var(--primary)"/><circle cx="175" cy="26" r="3" fill="var(--primary)"/><circle cx="210" cy="30" r="3" fill="var(--primary)"/><circle cx="245" cy="22" r="3" fill="var(--primary)"/><circle cx="280" cy="20" r="3" fill="var(--primary)"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-tertiary);margin-top:2px"><span>4/28</span><span>5/5</span><span>5/12</span><span>5/19</span><span>5/26</span><span>6/2</span></div>
+        <div style="display:flex;justify-content:center;gap:24px;margin-top:10px;font-size:12px">
+          <div><span style="color:var(--primary);font-weight:700">72 kg</span> <span style="color:var(--text-secondary)">当前</span></div>
+          <div><span style="color:var(--success);font-weight:700">+12 kg</span> <span style="color:var(--text-secondary)">近5周</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="font-size:13px;margin-bottom:8px">训练频率</div>
+        <div style="display:flex;gap:2px;flex-wrap:wrap" id="heatmap"></div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-tertiary);margin-top:4px"><span>3月</span><span>4月</span><span>5月</span><span>6月</span></div>
+      </div>
+    </div>
+
+    <!-- ============ SETTINGS PAGE ============ -->
+    <div class="page" id="page-settings">
+      <div style="margin:4px 0 14px"><div class="section-title">设置</div><div class="section-sub">管理你的训练数据</div></div>
+
+      <div class="settings-group">
+        <div class="settings-item" onclick="showBodyMetrics()">
+          <div class="left"><div class="icon-wrap">📏</div><div><div class="title">身体数据</div><div class="desc">体重、体脂率记录</div></div></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-secondary);font-size:12px" id="bodyWeightDisplay">70 kg</span><span class="right-arrow">›</span></div>
+        </div>
+        <div style="padding:10px 14px;background:var(--primary-bg);border-top:1px solid var(--border)">
+          <div style="display:flex;gap:8px">
+            <div class="stat-card" style="padding:6px;box-shadow:none"><div class="stat-label" style="font-size:10px">最新体重</div><div class="stat-value" style="font-size:15px;color:var(--primary)" id="settingsBodyWeight">70</div><div class="stat-label" id="settingsBodyUnit">kg</div></div>
+            <div class="stat-card" style="padding:6px;box-shadow:none"><div class="stat-label" style="font-size:10px">体脂率</div><div class="stat-value" style="font-size:15px;color:var(--primary)">15%</div><div class="stat-label">-</div></div>
+            <div class="stat-card" style="padding:6px;box-shadow:none"><div class="stat-label" style="font-size:10px">记录</div><div class="stat-value" style="font-size:15px;color:var(--primary)">6</div><div class="stat-label">次</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-item" onclick="showExerciseLibrary()">
+          <div class="left"><div class="icon-wrap">🏋️</div><div><div class="title">动作库管理</div><div class="desc">查看/添加自定义动作</div></div></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--text-secondary);font-size:12px" id="exerciseCount">24 个</span><span class="right-arrow">›</span></div>
+        </div>
+        <div class="settings-item" onclick="showThemeSettings()">
+          <div class="left"><div class="icon-wrap">🎨</div><div><div class="title">主题颜色</div><div class="desc">自定义 App 主色调</div></div></div>
+          <div style="display:flex;align-items:center;gap:6px"><span style="width:18px;height:18px;border-radius:50%;background:var(--primary);display:inline-block"></span><span class="right-arrow">›</span></div>
+        </div>
+        <div class="settings-item" onclick="showUnitSettings()">
+          <div class="left"><div class="icon-wrap">⚖️</div><div><div class="title">单位设置</div><div class="desc">kg / lb 切换</div></div></div>
+          <span style="color:var(--primary);font-weight:600;font-size:13px" id="unitDisplay">kg</span>
+        </div>
+        <div class="settings-item">
+          <div class="left"><div class="icon-wrap">📤</div><div><div class="title">导出数据</div><div class="desc">CSV 格式导出</div></div></div>
+          <span class="right-arrow">›</span>
+        </div>
+        <div class="settings-item" style="border-bottom:none">
+          <div class="left"><div class="icon-wrap">ℹ️</div><div><div class="title">关于</div><div class="desc">版本 1.0</div></div></div>
+          <span class="right-arrow">›</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" data-page="page-workout" onclick="switchPage('page-workout', this)"><div class="icon">🏋️</div><div class="label">训练</div></div>
+    <div class="nav-item" data-page="page-progress" onclick="switchPage('page-progress', this)"><div class="icon">📈</div><div class="label">进度</div></div>
+    <div class="nav-item" data-page="page-settings" onclick="switchPage('page-settings', this)"><div class="icon">⚙️</div><div class="label">设置</div></div>
+  </div>
+
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="handle"></div>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== THEME SYSTEM =====================
+const THEMES = [
+  { name: '紫罗兰', primary: '#6C63FF', primaryLight: '#8B83FF', primaryBg: '#f0eeff' },
+  { name: '翡翠绿', primary: '#2ECC71', primaryLight: '#58D68D', primaryBg: '#eafaf1' },
+  { name: '天空蓝', primary: '#3498DB', primaryLight: '#5DADE2', primaryBg: '#ebf5fb' },
+  { name: '日落橙', primary: '#E67E22', primaryLight: '#EB984E', primaryBg: '#fdf2e9' },
+  { name: '玫瑰红', primary: '#E74C3C', primaryLight: '#EC7063', primaryBg: '#fdedec' },
+  { name: '暗夜黑', primary: '#1a1a2e', primaryLight: '#2d2d44', primaryBg: '#eeeef4' },
+  { name: '石墨灰', primary: '#4A4A4A', primaryLight: '#6B6B6B', primaryBg: '#f0f0f0' },
+  { name: '珊瑚粉', primary: '#FF6B6B', primaryLight: '#FF8E8E', primaryBg: '#fff0f0' },
+];
+
+let currentTheme = THEMES[0];
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  const root = document.querySelector('.phone').style;
+  root.setProperty('--primary', theme.primary);
+  root.setProperty('--primary-light', theme.primaryLight);
+  root.setProperty('--primary-bg', theme.primaryBg);
+  // Save to localStorage-like memory
+  try { localStorage.setItem('fitness-theme', JSON.stringify(theme)); } catch(e) {}
+}
+
+// ===================== EXERCISE LIBRARY =====================
+const ICONS = ['💪','🦵','🔙','🏋️','💥','🧘','🏃','🤸','🔥','⚡'];
+const BODY_PARTS = ['胸部','背部','腿部','肩部','手臂','核心','全身','有氧'];
+
+const PRESET_EXERCISES = [
+  { icon: '💪', name: '卧推', part: '胸部', type: 'strength', preset: true },
+  { icon: '💪', name: '上斜卧推', part: '胸部', type: 'strength', preset: true },
+  { icon: '💪', name: '飞鸟', part: '胸部', type: 'strength', preset: true },
+  { icon: '💪', name: '绳索夹胸', part: '胸部', type: 'strength', preset: true },
+  { icon: '🔙', name: '引体向上', part: '背部', type: 'reps', preset: true },
+  { icon: '🔙', name: '杠铃划船', part: '背部', type: 'strength', preset: true },
+  { icon: '🔙', name: '硬拉', part: '背部', type: 'strength', preset: true },
+  { icon: '🔙', name: '高位下拉', part: '背部', type: 'strength', preset: true },
+  { icon: '🦵', name: '深蹲', part: '腿部', type: 'strength', preset: true },
+  { icon: '🦵', name: '腿举', part: '腿部', type: 'strength', preset: true },
+  { icon: '🦵', name: '弓步蹲', part: '腿部', type: 'strength', preset: true },
+  { icon: '🦵', name: '腿弯举', part: '腿部', type: 'strength', preset: true },
+  { icon: '🦵', name: '罗马尼亚硬拉', part: '腿部', type: 'strength', preset: true },
+  { icon: '🏋️', name: '推举', part: '肩部', type: 'strength', preset: true },
+  { icon: '🏋️', name: '侧平举', part: '肩部', type: 'strength', preset: true },
+  { icon: '🏋️', name: '面拉', part: '肩部', type: 'strength', preset: true },
+  { icon: '💥', name: '二头弯举', part: '手臂', type: 'strength', preset: true },
+  { icon: '💥', name: '锤式弯举', part: '手臂', type: 'strength', preset: true },
+  { icon: '💥', name: '三头下压', part: '手臂', type: 'strength', preset: true },
+  { icon: '💥', name: '窄距卧推', part: '手臂', type: 'strength', preset: true },
+  { icon: '🧘', name: '平板支撑', part: '核心', type: 'duration', preset: true },
+  { icon: '🧘', name: '卷腹', part: '核心', type: 'reps', preset: true },
+  { icon: '🧘', name: '举腿', part: '核心', type: 'reps', preset: true },
+  { icon: '🧘', name: '俄罗斯转体', part: '核心', type: 'reps', preset: true },
+];
+
+let allExercises = [];
+function initExercises() { allExercises = PRESET_EXERCISES.map(e => ({...e})); updateExerciseCount(); }
+function getExercises() { return allExercises; }
+function addCustomExercise(icon, name, part, type) { allExercises.push({icon,name,part,type,preset:false}); updateExerciseCount(); }
+function removeCustomExercise(index) { if(allExercises[index]&&!allExercises[index].preset){allExercises.splice(index,1);updateExerciseCount();} }
+function updateExerciseCount() { const el=document.getElementById('exerciseCount'); if(el) el.textContent=`${allExercises.length} 个`; }
+
+function getTypeLabel(t){return{strength:'重量×次数',reps:'仅次数',duration:'计时'}[t]||'';}
+function getTypeBadge(t){const m={strength:'badge-strength',reps:'badge-reps',duration:'badge-duration'};return m[t]||'';}
+
+// ===================== STATE =====================
+let exerciseCards = [];
+let cardIdCounter = 0;
+let timerSeconds = 332;
+let currentUnit = 'kg';
+
+// ===================== NAVIGATION =====================
+function switchPage(pageId, navItem) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  if(navItem) navItem.classList.add('active');
+  document.getElementById('appContent').scrollTop = 0;
+}
+
+// ===================== TRAINING =====================
+function startWorkout() {
+  switchPage('page-recording', null);
+  exerciseCards = []; cardIdCounter = 0;
+  const firstCard = createNewCard('💪','卧推','胸部','strength');
+  exerciseCards.push(firstCard);
+  renderExerciseCards();
+}
+function endWorkout() {
+  if(confirm('确定结束本次训练？')) {
+    switchPage('page-workout', document.querySelector('.nav-item[data-page="page-workout"]'));
+  }
+}
+
+function createNewCard(icon,name,part,type) {
+  cardIdCounter++;
+  const card={id:cardIdCounter,icon,name,part,type,sets:[],active:true,setNum:1};
+  if(type==='strength'){card.weight=60;card.reps=10;}
+  else if(type==='reps')card.reps=15;
+  else if(type==='duration')card.duration=30;
+  return card;
+}
+
+function renderExerciseCards() {
+  const container=document.getElementById('exerciseCardsContainer');
+  container.innerHTML='';
+  exerciseCards.forEach(card=>{
+    const isActive=card.active, type=card.type;
+    const div=document.createElement('div');
+    div.className='card';
+    div.id=`card-${card.id}`;
+    div.className+=isActive?' card-active':' card-done';
+    div.style.marginBottom='10px';
+    const badge=`<span class="badge ${getTypeBadge(type)}">${getTypeLabel(type)}</span>`;
+    let h=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:36px;height:36px;background:var(--primary-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px">${card.icon}</div>
+        <div><div class="card-title">${card.name} ${badge}</div><div class="card-sub">${card.part}</div></div>
+      </div>
+      ${isActive?`<div onclick="showExercisePicker(${card.id})" style="color:var(--primary);font-size:11px;font-weight:500;cursor:pointer">换动作</div>`:`<span style="color:var(--success);font-size:11px;font-weight:600">✓</span>`}
+    </div>`;
+    let sets='';
+    if(card.sets.length>0){
+      sets='<div style="margin-bottom:6px">';
+      card.sets.forEach((s,i)=>{
+        sets+='<div class="set-row"><span class="num">'+(i+1)+'</span>';
+        if(type==='strength')sets+=`<span class="val1">${s.weight} kg</span><span class="val2">${s.reps} 次</span>`;
+        else if(type==='reps')sets+=`<span class="val1">${s.reps} 次</span><span class="val2"></span>`;
+        else if(type==='duration')sets+=`<span class="val1">${s.duration}s</span><span class="val2"></span>`;
+        sets+=isActive?`<span class="del" onclick="deleteSet(${card.id},${i})">✕</span>`:'<span style="width:20px"></span></div>';
+      });
+      sets+='</div>';
+    } else if(!isActive){sets='<div style="color:var(--text-tertiary);font-size:12px;padding:4px 0;text-align:center">未记录</div>';}
+    let r='';
+    if(isActive){
+      if(type==='strength'){
+        r=`<div class="record-panel"><div class="hint">第 ${card.setNum} 组</div><div style="display:flex;gap:12px;margin-bottom:12px">
+          <div style="flex:1;text-align:center"><div style="font-size:10px;color:var(--text-secondary);margin-bottom:5px">重量</div>
+            <div class="stepper"><div class="btn" onclick="adjustCardField(${card.id},'weight',-2.5)">−</div><div class="value" id="f1-${card.id}">${card.weight}</div><div class="btn" onclick="adjustCardField(${card.id},'weight',2.5)">+</div></div></div>
+          <div style="flex:1;text-align:center"><div style="font-size:10px;color:var(--text-secondary);margin-bottom:5px">次数</div>
+            <div class="stepper"><div class="btn" onclick="adjustCardField(${card.id},'reps',-1)">−</div><div class="value" id="f2-${card.id}">${card.reps}</div><div class="btn" onclick="adjustCardField(${card.id},'reps',1)">+</div></div></div></div>
+          <div class="btn-record" onclick="addSetToCard(${card.id})">完成本组</div></div>`;
+      } else if(type==='reps'){
+        r=`<div class="record-panel"><div class="hint">第 ${card.setNum} 组</div><div style="display:flex;justify-content:center;margin-bottom:12px">
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-secondary);margin-bottom:5px">次数</div>
+            <div class="stepper"><div class="btn" onclick="adjustCardField(${card.id},'reps',-1)">−</div><div class="value" id="f1-${card.id}">${card.reps}</div><div class="btn" onclick="adjustCardField(${card.id},'reps',1)">+</div></div></div></div>
+          <div class="btn-record" onclick="addSetToCard(${card.id})">完成本组</div></div>`;
+      } else if(type==='duration'){
+        r=`<div class="record-panel"><div class="hint">第 ${card.setNum} 组</div><div style="display:flex;justify-content:center;margin-bottom:12px">
+          <div style="text-align:center"><div style="font-size:10px;color:var(--text-secondary);margin-bottom:5px">时长 (秒)</div>
+            <div class="stepper"><div class="btn" onclick="adjustCardField(${card.id},'duration',-5)">−</div><div class="value" id="f1-${card.id}">${card.duration}</div><div class="btn" onclick="adjustCardField(${card.id},'duration',5)">+</div></div></div></div>
+          <div class="btn-record" onclick="addSetToCard(${card.id})">完成本组</div></div>`;
+      }
+    }
+    div.innerHTML=h+sets+r;
+    container.appendChild(div);
+  });
+}
+
+function getCard(id){return exerciseCards.find(c=>c.id===id);}
+function adjustCardField(id,field,delta){
+  const card=getCard(id);if(!card)return;
+  if(field==='weight')card.weight=Math.max(0,Math.round((card.weight+delta)*10)/10);
+  else if(field==='reps')card.reps=Math.max(1,card.reps+delta);
+  else if(field==='duration')card.duration=Math.max(1,card.duration+delta);
+  const el=document.getElementById(`f1-${id}`);
+  if(el)el.textContent=card[field]!==undefined?card[field]:card.reps;
+}
+function addSetToCard(id){
+  const card=getCard(id);if(!card)return;
+  const set={};
+  if(card.type==='strength'){set.weight=card.weight;set.reps=card.reps;}
+  else if(card.type==='reps')set.reps=card.reps;
+  else if(card.type==='duration')set.duration=card.duration;
+  card.sets.push(set);card.setNum++;
+  renderExerciseCards();
+  setTimeout(()=>{const el=document.getElementById(`card-${id}`);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},50);
+}
+function deleteSet(cardId,setIndex){const card=getCard(cardId);if(!card)return;card.sets.splice(setIndex,1);card.setNum=Math.max(1,card.setNum-1);renderExerciseCards();}
+
+// ===================== EXERCISE PICKER =====================
+function showExercisePicker(activeCardId){
+  const exs=getExercises();
+  let h='<div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:4px">选择动作</div><div style="color:var(--text-secondary);font-size:12px;margin-bottom:10px">每个动作有不同记录方式</div>';
+  h+='<input placeholder="搜索..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:12px;outline:none;background:var(--card-bg);color:var(--text)" oninput="filterExercises()">';
+  h+='<div id="exerciseList" style="max-height:300px;overflow-y:auto">';
+  const groups={};
+  exs.forEach(e=>{if(!groups[e.part])groups[e.part]=[];groups[e.part].push(e);});
+  Object.entries(groups).forEach(([part,items])=>{
+    h+=`<div class="ex-part-label">${part}</div>`;
+    items.forEach(e=>{
+      h+=`<div class="ex-item" data-name="${e.name}" onclick="selectExercise('${e.icon}','${e.name}','${e.part}','${e.type}',${activeCardId||'null'})">
+        <div class="icon-box">${e.icon}</div>
+        <div><div class="name">${e.name} <span class="badge ${getTypeBadge(e.type)}">${getTypeLabel(e.type)}</span></div><div class="part">${e.part}</div></div>
+      </div>`;
+    });
+  });
+  h+='</div>';
+  document.getElementById('modalContent').innerHTML=h;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function filterExercises(){
+  const q=document.getElementById('searchInput')?.value.toLowerCase()||'';
+  document.querySelectorAll('.ex-item').forEach(el=>{
+    const n=el.dataset.name.toLowerCase();
+    el.style.display=n.includes(q)?'':'none';
+  });
+}
+function selectExercise(icon,name,part,type,activeCardId){
+  if(activeCardId){
+    const card=getCard(activeCardId);if(card){
+      card.icon=icon;card.name=name;card.part=part;card.type=type;
+      card.sets=[];card.setNum=1;
+      if(type==='strength'){card.weight=60;card.reps=10;}
+      else if(type==='reps')card.reps=15;
+      else if(type==='duration')card.duration=30;
+    }
+  }else{
+    const nc=createNewCard(icon,name,part,type);
+    exerciseCards.forEach(c=>c.active=false);nc.active=true;
+    exerciseCards.push(nc);
+  }
+  document.getElementById('modalOverlay').classList.remove('active');
+  renderExerciseCards();showToast(`已添加: ${name}`);
+}
+
+// ===================== EXERCISE LIBRARY MANAGEMENT =====================
+function showExerciseLibrary(){
+  const exs=getExercises();
+  let h='<div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:4px">动作库管理</div><div style="color:var(--text-secondary);font-size:12px;margin-bottom:10px">预设动作不可删除</div>';
+  h+=`<div style="background:var(--primary-bg);border-radius:10px;padding:12px;margin-bottom:12px">
+    <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:8px">添加自定义动作</div>
+    <div class="form-group"><label>图标</label><div class="chip-group" id="iconPicker">`;
+  ICONS.forEach(ico=>{h+=`<div class="chip" data-icon="${ico}" onclick="selectChip(this,'iconPicker','selectedIcon')">${ico}</div>`;});
+  h+=`</div><input type="hidden" id="selectedIcon" value="💪"></div>
+    <div class="form-group"><label>名称</label><input id="newExName" placeholder="例如：保加利亚分腿蹲" maxlength="20"></div>
+    <div class="form-group"><label>部位</label><select id="newExPart">${BODY_PARTS.map(p=>`<option value="${p}">${p}</option>`).join('')}</select></div>
+    <div class="form-group"><label>记录类型</label><select id="newExType">
+      <option value="strength">重量 × 次数</option><option value="reps">仅次数</option><option value="duration">计时秒数</option>
+    </select></div>
+    <div onclick="addCustomExerciseFromForm()" class="btn-record" style="background:var(--primary);color:white;padding:10px;border-radius:8px;text-align:center;font-size:13px;font-weight:600;cursor:pointer">添加动作</div></div>`;
+  h+='<div style="max-height:220px;overflow-y:auto">';
+  const groups={};
+  exs.forEach((e,i)=>{if(!groups[e.part])groups[e.part]=[];groups[e.part].push({...e,idx:i});});
+  Object.entries(groups).forEach(([part,items])=>{
+    h+=`<div style="font-size:10px;color:var(--text-tertiary);font-weight:600;margin:6px 0 3px;letter-spacing:0.5px">${part}</div>`;
+    items.forEach(e=>{
+      h+=`<div class="ex-lib-item ${e.preset?'preset':''}">
+        <div style="width:30px;height:30px;background:var(--primary-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:15px">${e.icon}</div>
+        <div style="flex:1"><span style="font-size:13px;font-weight:500;color:var(--text)">${e.name}</span> <span class="badge ${getTypeBadge(e.type)}">${getTypeLabel(e.type)}</span></div>
+        ${!e.preset?`<div class="del-btn" onclick="removeCustomEx(${e.idx})">✕</div>`:''}
+      </div>`;
+    });
+  });
+  h+='</div><div onclick="document.getElementById(\'modalOverlay\').classList.remove(\'active\')" style="text-align:center;color:var(--primary);font-size:13px;font-weight:500;margin-top:12px;cursor:pointer">完成</div>';
+  document.getElementById('modalContent').innerHTML=h;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function selectChip(el,pickerId,inputId){
+  document.querySelectorAll(`#${pickerId} .chip`).forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById(inputId).value=el.dataset.icon;
+}
+function addCustomExerciseFromForm(){
+  const icon=document.getElementById('selectedIcon').value;
+  const name=document.getElementById('newExName').value.trim();
+  const part=document.getElementById('newExPart').value;
+  const type=document.getElementById('newExType').value;
+  if(!name){showToast('请输入名称');return;}
+  if(allExercises.some(e=>e.name===name)){showToast('已存在');return;}
+  addCustomExercise(icon,name,part,type);
+  showToast(`已添加: ${name}`);
+  showExerciseLibrary();
+}
+function removeCustomEx(index){
+  if(confirm('确定删除？')){removeCustomExercise(index);showExerciseLibrary();}
+}
+
+// ===================== THEME SETTINGS =====================
+function showThemeSettings() {
+  let h='<div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:4px">🎨 主题颜色</div>';
+  h+='<div style="color:var(--text-secondary);font-size:12px;margin-bottom:14px">选择一个你喜欢的主题色</div>';
+  h+='<div class="theme-grid">';
+  THEMES.forEach(t => {
+    const active = t.primary === currentTheme.primary;
+    h+=`<div class="theme-option ${active?'active':''}" onclick="selectTheme('${t.primary}','${t.primaryLight}','${t.primaryBg}','${t.name}')">
+      <div class="theme-swatch" style="background:${t.primary}"></div>
+      <div class="theme-name" style="${active?'color:var(--primary);font-weight:600':''}">${t.name}</div>
+    </div>`;
+  });
+  h+='</div>';
+  h+=`<div style="background:var(--primary-bg);border-radius:10px;padding:14px;margin-bottom:12px">
+    <div style="font-weight:600;font-size:13px;color:var(--text);margin-bottom:6px">预览</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="width:32px;height:32px;border-radius:8px;background:var(--primary)"></div>
+      <div style="flex:1;height:6px;border-radius:3px;background:var(--primary-bg)"><div style="width:60%;height:100%;border-radius:3px;background:var(--primary)"></div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <span style="background:var(--primary-bg);color:var(--primary);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:500">按钮</span>
+      <span style="border:1.5px solid var(--border);padding:4px 10px;border-radius:6px;font-size:11px;color:var(--text-secondary)">卡片</span>
+    </div>
+  </div>`;
+  h+='<div onclick="document.getElementById(\'modalOverlay\').classList.remove(\'active\')" style="text-align:center;color:var(--primary);font-size:13px;font-weight:500;cursor:pointer">完成</div>';
+  document.getElementById('modalContent').innerHTML=h;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+function selectTheme(primary, primaryLight, primaryBg, name) {
+  applyTheme({primary, primaryLight, primaryBg, name});
+  showThemeSettings();
+  showToast(`主题: ${name}`);
+}
+
+// ===================== UNIT SETTINGS =====================
+function showUnitSettings(){
+  document.getElementById('modalContent').innerHTML=`
+    <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:4px">⚖️ 单位设置</div>
+    <div style="color:var(--text-secondary);font-size:12px;margin-bottom:14px">切换后重量数据自动换算</div>
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <div onclick="toggleUnit('kg')" style="flex:1;padding:16px;border-radius:12px;cursor:pointer;text-align:center;transition:all 0.2s;${currentUnit==='kg'?'background:var(--primary-bg);border:2px solid var(--primary)':'background:var(--card-bg);border:2px solid var(--border)'}">
+        <div style="font-size:24px;margin-bottom:2px">kg</div><div style="font-weight:600;font-size:14px;color:${currentUnit==='kg'?'var(--primary)':'var(--text)'}">公斤</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">公制</div>
+      </div>
+      <div onclick="toggleUnit('lb')" style="flex:1;padding:16px;border-radius:12px;cursor:pointer;text-align:center;transition:all 0.2s;${currentUnit==='lb'?'background:var(--primary-bg);border:2px solid var(--primary)':'background:var(--card-bg);border:2px solid var(--border)'}">
+        <div style="font-size:24px;margin-bottom:2px">lb</div><div style="font-weight:600;font-size:14px;color:${currentUnit==='lb'?'var(--primary)':'var(--text)'}">磅</div><div style="font-size:11px;color:var(--text-secondary);margin-top:2px">英制</div>
+      </div>
+    </div>
+    <div onclick="document.getElementById('modalOverlay').classList.remove('active')" style="text-align:center;color:var(--primary);font-size:13px;font-weight:500;cursor:pointer">完成</div>`;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function toggleUnit(unit){
+  currentUnit=unit;
+  document.getElementById('unitDisplay').textContent=unit;
+  const w=unit==='kg'?'70':'154';
+  document.getElementById('bodyWeightDisplay').textContent=`${w} ${unit}`;
+  document.getElementById('settingsBodyWeight').textContent=w;
+  document.getElementById('settingsBodyUnit').textContent=unit;
+  showUnitSettings();
+  showToast(`已切换到${unit==='kg'?'公斤':'磅'}`);
+}
+
+// ===================== MISC =====================
+function showToast(msg){
+  const existing=document.querySelector('.toast-msg');if(existing)existing.remove();
+  const t=document.createElement('div');t.className='toast-msg';
+  t.textContent=msg;document.getElementById('app').appendChild(t);
+  setTimeout(()=>t.remove(),1500);
+}
+function closeModal(e){if(e.target===document.getElementById('modalOverlay'))document.getElementById('modalOverlay').classList.remove('active');}
+function showWorkoutDetail(){
+  document.getElementById('modalContent').innerHTML=`
+    <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:4px">6月2日 训练详情</div>
+    <div style="color:var(--text-secondary);font-size:12px;margin-bottom:12px">55 分钟 · 8 组</div>
+    <div class="workout-summary-item"><div class="name">卧推</div><div class="detail">60kg×12 · 60kg×10 · 65kg×8</div></div>
+    <div class="workout-summary-item" style="border-left-color:var(--success)"><div class="name">深蹲</div><div class="detail">80kg×10 · 85kg×8</div></div>
+    <div onclick="document.getElementById('modalOverlay').classList.remove('active')" style="text-align:center;color:var(--primary);font-size:13px;font-weight:500;margin-top:12px;cursor:pointer">关闭</div>`;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+function showBodyMetrics(){
+  document.getElementById('modalContent').innerHTML=`
+    <div style="font-weight:700;font-size:17px;color:var(--text);margin-bottom:4px">📏 身体数据</div>
+    <div style="color:var(--text-secondary);font-size:12px;margin-bottom:12px">体重、体脂率记录</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="flex:1;text-align:center;background:var(--primary-bg);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--text-secondary);margin-bottom:4px">体重</div><div style="font-size:22px;font-weight:700;color:var(--primary)">${currentUnit==='kg'?'70':'154'}</div><div style="font-size:10px;color:var(--text-secondary)">${currentUnit}</div></div>
+      <div style="flex:1;text-align:center;background:var(--primary-bg);border-radius:8px;padding:10px"><div style="font-size:10px;color:var(--text-secondary);margin-bottom:4px">体脂率</div><div style="font-size:22px;font-weight:700;color:var(--primary)">15%</div><div style="font-size:10px;color:var(--text-secondary)">-</div></div>
+    </div>
+    <div onclick="document.getElementById('modalOverlay').classList.remove('active')" style="text-align:center;color:var(--primary);font-size:13px;font-weight:500;margin-top:12px;cursor:pointer">关闭</div>`;
+  document.getElementById('modalOverlay').classList.add('active');
+}
+
+// ===================== HEATMAP =====================
+(function(){
+  const hm=document.getElementById('heatmap');
+  for(let i=0;i<90;i++){
+    const tr=Math.random()>0.7;
+    const el=document.createElement('div');
+    el.style.cssText=`width:12px;height:12px;border-radius:2px;background:${tr?'var(--primary)':'var(--border)'};cursor:pointer;transition:transform 0.1s`;
+    el.title=tr?'有训练':'无训练';
+    el.onmouseover=()=>el.style.transform='scale(1.3)';
+    el.onmouseout=()=>el.style.transform='scale(1)';
+    hm.appendChild(el);
+  }
+})();
+
+// ===================== TIMER =====================
+setInterval(()=>{timerSeconds++;const h=Math.floor(timerSeconds/3600),m=Math.floor((timerSeconds%3600)/60),s=timerSeconds%60;const el=document.getElementById('timerDisplay');if(el)el.textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;},1000);
+
+// ===================== INIT =====================
+initExercises();
+</script>
+</body>
+</html>

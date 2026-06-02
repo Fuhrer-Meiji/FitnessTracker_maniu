@@ -1,0 +1,69 @@
+<h2>训练历史日历布局</h2>
+<p class="subtitle">训练记录以日历形式展示，有训练的日子做标记</p>
+
+<div class="options">
+  <div class="option" data-choice="month-calendar" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>月历视图</h3>
+      <p>按月展示日历，有训练的日子有圆点标记，点击日期查看当天训练详情</p>
+      <div style="margin-top:8px;background:#f9f9f9;border-radius:6px;padding:10px;font-size:11px">
+        <div style="text-align:center;font-weight:bold;margin-bottom:6px">2026年 6月</div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;gap:2px">
+          <div style="color:#888">一</div><div style="color:#888">二</div><div style="color:#888">三</div><div style="color:#888">四</div><div style="color:#888">五</div><div style="color:#888">六</div><div style="color:#888">日</div>
+          <div>1</div><div style="position:relative">2<div style="width:4px;height:4px;background:#6C63FF;border-radius:50%;margin:auto"></div></div><div>3</div><div>4</div><div style="position:relative">5<div style="width:4px;height:4px;background:#6C63FF;border-radius:50%;margin:auto"></div></div><div>6</div><div>7</div>
+          <div>8</div><div>9</div><div style="position:relative">10<div style="width:4px;height:4px;background:#6C63FF;border-radius:50%;margin:auto"></div></div><div>11</div><div>12</div><div>13</div><div>14</div>
+          <div>15</div><div style="position:relative">16<div style="width:4px;height:4px;background:#6C63FF;border-radius:50%;margin:auto"></div></div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div>
+          <div>22</div><div>23</div><div>24</div><div>25</div><div>26</div><div>27</div><div>28</div>
+          <div>29</div><div>30</div><div></div><div></div><div></div><div></div><div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="week-calendar" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>周历 + 当日详情</h3>
+      <p>顶部显示当前周日历，下方展示选中日期的训练详情列表</p>
+      <div style="margin-top:8px;background:#f9f9f9;border-radius:6px;padding:10px;font-size:11px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <div style="text-align:center;padding:4px;color:#888">一<br><span style="font-size:14px">1</span></div>
+          <div style="text-align:center;padding:4px;color:#888">二<br><span style="font-size:14px">2</span></div>
+          <div style="text-align:center;padding:4px;background:#6C63FF20;border-radius:6px;color:#6C63FF;font-weight:bold">三<br><span style="font-size:14px">3</span></div>
+          <div style="text-align:center;padding:4px;color:#888">四<br><span style="font-size:14px">4</span></div>
+          <div style="text-align:center;padding:4px;color:#888">五<br><span style="font-size:14px">5</span></div>
+          <div style="text-align:center;padding:4px;color:#888">六<br><span style="font-size:14px">6</span></div>
+          <div style="text-align:center;padding:4px;color:#888">日<br><span style="font-size:14px">7</span></div>
+        </div>
+        <div style="border-top:1px solid #eee;padding-top:6px">
+          <div style="font-weight:bold;font-size:12px">6月3日 训练</div>
+          <div style="color:#444;margin-top:4px">🏋️ 卧推 · 60kg×12 60kg×10 65kg×8</div>
+          <div style="color:#444">🏋️ 深蹲 · 80kg×10 85kg×8</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="list-calendar" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>日历 + 列表混合</h3>
+      <p>月历在上，下方直接按日期倒序展示所有训练记录列表</p>
+      <div style="margin-top:8px;background:#f9f9f9;border-radius:6px;padding:10px;font-size:11px">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);text-align:center;gap:2px;font-size:10px;margin-bottom:6px">
+          <div style="color:#888">一</div><div style="color:#888">二</div><div style="color:#888">三</div><div style="color:#888">四</div><div style="color:#888">五</div><div style="color:#888">六</div><div style="color:#888">日</div>
+          <div>1</div><div style="color:#6C63FF">2</div><div>3</div><div>4</div><div style="color:#6C63FF">5</div><div>6</div><div>7</div>
+        </div>
+        <div style="border-top:1px solid #eee;padding-top:4px">
+          <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span><strong>6月5日</strong> 下午</span>
+            <span style="color:#888">45分钟 · 6组</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:4px 0">
+            <span><strong>6月2日</strong> 早上</span>
+            <span style="color:#888">60分钟 · 8组</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
