@@ -86,7 +86,23 @@ private fun WorkoutHomeScreen(
             )
         }
 
-        if (state.recentWorkouts.isNotEmpty()) {
+        val todayStart = DateUtils.getStartOfDay(System.currentTimeMillis())
+        val hasTodayWorkout = todayStart in state.workoutDates
+
+        if (hasTodayWorkout) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("今日训练", style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 10.dp))
+                    Text("已完成训练，继续加油！", style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary)
+                }
+            }
+        } else if (state.workoutDates.isNotEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
