@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.fitnessapp.tracker.FitnessApp
 import com.fitnessapp.tracker.data.model.Exercise
 import com.fitnessapp.tracker.data.model.RecordType
+import com.fitnessapp.tracker.data.model.WorkoutSet
 import com.fitnessapp.tracker.data.repository.ExerciseRepository
 import com.fitnessapp.tracker.data.repository.WorkoutRepository
 import com.fitnessapp.tracker.ui.theme.ThemeManager
@@ -14,6 +15,12 @@ import com.fitnessapp.tracker.util.UnitConverter
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+
+data class DayWorkoutDetail(
+    val workoutId: Long,
+    val exerciseName: String,
+    val sets: List<WorkoutSet>
+)
 
 data class ProgressUiState(
     val weeklyCount: Int = 0,
@@ -25,7 +32,9 @@ data class ProgressUiState(
     val strengthTrendData: List<Pair<String, Double>> = emptyList(),
     val dailyFrequency: Map<Int, Int> = emptyMap(),
     val workoutDates: Set<Long> = emptySet(),
-    val currentUnit: String = "kg"
+    val currentUnit: String = "kg",
+    val selectedDay: Long? = null,
+    val dayWorkouts: List<DayWorkoutDetail> = emptyList()
 )
 
 class ProgressViewModel(application: Application) : AndroidViewModel(application) {
@@ -37,17 +46,19 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
     private val _state = MutableStateFlow(ProgressUiState())
     val state: StateFlow<ProgressUiState> = _state.asStateFlow()
 
+    private val _selectedExerciseId = MutableStateFlow<Long?>(null)
+
     init {
         loadStats()
-        loadExercises()
+        observeExercises()
         observeUnit()
+        observeTrend()
     }
 
     private fun observeUnit() {
         viewModelScope.launch {
             themeManager.unit.collect { unit ->
                 _state.update { it.copy(currentUnit = unit) }
-                loadStrengthTrend()
             }
         }
     }
@@ -75,15 +86,15 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun loadExercises() {
+    private fun observeExercises() {
         viewModelScope.launch {
             exerciseRepo.getAllExercises().collect { exercises ->
                 val strengthExercises = exercises.filter { it.recordType == RecordType.STRENGTH }
-                _state.update { it.copy(
-                    exercises = strengthExercises,
-                    selectedExercise = strengthExercises.firstOrNull()
-                )}
-                loadStrengthTrend()
+                val currentSelected = _state.value.selectedExercise
+                val newSelected = if (currentSelected in strengthExercises) currentSelected
+                    else strengthExercises.firstOrNull()
+                _state.update { it.copy(exercises = strengthExercises, selectedExercise = newSelected) }
+                _selectedExerciseId.value = newSelected?.id
             }
         }
     }
@@ -108,30 +119,58 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun loadStrengthTrend() {
-        val ex = _state.value.selectedExercise ?: return
+    private fun observeTrend() {
         viewModelScope.launch {
-            val cal = Calendar.getInstance()
-            cal.add(Calendar.WEEK_OF_YEAR, -5)
-            val start = DateUtils.getStartOfDay(cal.timeInMillis)
-            val now = System.currentTimeMillis()
-            val unit = _state.value.currentUnit
+            combine(
+                _selectedExerciseId,
+                themeManager.unit,
+                workoutRepo.getAllWorkouts()
+            ) { exId, unit, _ ->
+                exId to unit
+            }.collect { (exId, unit) ->
+                if (exId == null) {
+                    _state.update { it.copy(strengthTrendData = emptyList()) }
+                    return@collect
+                }
+                val cal = Calendar.getInstance()
+                cal.add(Calendar.WEEK_OF_YEAR, -5)
+                val start = DateUtils.getStartOfDay(cal.timeInMillis)
 
-            val workouts = workoutRepo.getWorkoutsInRange(start, now).first()
-            val data = mutableListOf<Pair<String, Double>>()
-
-            for (w in workouts) {
-                val sets = workoutRepo.getSetsForExercise(w.id, ex.id)
-                val maxWeight = sets.maxOfOrNull { it.weight ?: 0.0 } ?: continue
-                data.add(DateUtils.formatDate(w.date) to UnitConverter.displayWeight(maxWeight, unit))
+                val workouts = workoutRepo.getWorkoutsInRange(start, System.currentTimeMillis()).first()
+                val data = mutableListOf<Pair<String, Double>>()
+                for (w in workouts) {
+                    val sets = workoutRepo.getSetsForExercise(w.id, exId)
+                    val maxWeight = sets.maxOfOrNull { it.weight ?: 0.0 } ?: continue
+                    data.add(DateUtils.formatDate(w.date) to UnitConverter.displayWeight(maxWeight, unit))
+                }
+                _state.update { it.copy(strengthTrendData = data) }
             }
-
-            _state.update { it.copy(strengthTrendData = data) }
         }
     }
 
     fun selectExercise(exercise: Exercise) {
         _state.update { it.copy(selectedExercise = exercise) }
-        loadStrengthTrend()
+        _selectedExerciseId.value = exercise.id
+    }
+
+    fun selectDay(dayStart: Long) {
+        viewModelScope.launch {
+            val dayEnd = dayStart + 86400000
+            val workouts = workoutRepo.getWorkoutsByDay(dayStart, dayEnd)
+            val details = mutableListOf<DayWorkoutDetail>()
+            for (w in workouts) {
+                val sets = workoutRepo.getSetsForWorkout(w.id)
+                val setsByExercise = sets.groupBy { it.exerciseId }
+                for ((exId, exSets) in setsByExercise) {
+                    val ex = exerciseRepo.getExerciseById(exId)
+                    details.add(DayWorkoutDetail(
+                        workoutId = w.id,
+                        exerciseName = ex?.name ?: "未知",
+                        sets = exSets
+                    ))
+                }
+            }
+            _state.update { it.copy(selectedDay = dayStart, dayWorkouts = details) }
+        }
     }
 }

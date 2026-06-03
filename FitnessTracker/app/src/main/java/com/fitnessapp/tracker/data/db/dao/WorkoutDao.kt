@@ -13,6 +13,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workouts WHERE isDraft = 0 AND date >= :start AND date <= :end ORDER BY date ASC")
     fun getWorkoutsInRange(start: Long, end: Long): Flow<List<WorkoutEntity>>
 
+    @Query("SELECT * FROM workouts WHERE isDraft = 0 AND date >= :dayStart AND date <= :dayEnd ORDER BY date ASC")
+    suspend fun getWorkoutsByDay(dayStart: Long, dayEnd: Long): List<WorkoutEntity>
+
     @Query("SELECT * FROM workouts WHERE isDraft = 0 AND date = :date LIMIT 1")
     suspend fun getWorkoutByDate(date: Long): WorkoutEntity?
 

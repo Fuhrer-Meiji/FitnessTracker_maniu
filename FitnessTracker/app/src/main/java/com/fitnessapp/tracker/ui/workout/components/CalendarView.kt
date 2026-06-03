@@ -23,6 +23,8 @@ private data class YearMonth(val year: Int, val month: Int)
 fun CalendarView(
     workoutDates: Set<Long>,
     dailyFrequency: Map<Int, Int> = emptyMap(),
+    selectedDay: Long? = null,
+    onDayClick: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val today = Calendar.getInstance(Locale.CHINESE)
@@ -63,12 +65,6 @@ fun CalendarView(
                         }
                         .padding(8.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("今天", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .clickable { current = YearMonth(today.get(Calendar.YEAR), today.get(Calendar.MONTH)) }
-                        .padding(horizontal = 8.dp, vertical = 6.dp))
-                Spacer(Modifier.width(4.dp))
                 Text(">", color = MaterialTheme.colorScheme.primary, fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
@@ -106,8 +102,14 @@ fun CalendarView(
                             val isToday = today.get(Calendar.YEAR) == current.year &&
                                     today.get(Calendar.MONTH) == current.month &&
                                     today.get(Calendar.DAY_OF_MONTH) == day
-                            val freq = dailyFrequency[day] ?: 0
-                            val hasWorkout = freq > 0
+                            val cal = Calendar.getInstance()
+                            cal.set(current.year, current.month, day, 0, 0, 0)
+                            cal.set(Calendar.MILLISECOND, 0)
+                            val dayStart = cal.timeInMillis
+                            val isSelected = selectedDay == dayStart
+                            val isCurrentMonth = current.year == today.get(Calendar.YEAR) && current.month == today.get(Calendar.MONTH)
+                            val freq = if (isCurrentMonth) (dailyFrequency[day] ?: 0) else 0
+                            val hasWorkout = dayStart in workoutDates
 
                             val bgAlpha = if (hasWorkout) (freq.toFloat() / maxFreq).coerceIn(0.15f, 0.9f) else 0f
 
@@ -117,21 +119,40 @@ fun CalendarView(
                                     .size(32.dp)
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(
-                                        if (isToday) MaterialTheme.colorScheme.primary
-                                        else if (hasWorkout) MaterialTheme.colorScheme.primary.copy(alpha = bgAlpha)
-                                        else androidx.compose.ui.graphics.Color.Transparent
+                                        when {
+                                            isSelected -> MaterialTheme.colorScheme.primary
+                                            isToday -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                            hasWorkout -> MaterialTheme.colorScheme.primary.copy(alpha = bgAlpha)
+                                            else -> androidx.compose.ui.graphics.Color.Transparent
+                                        }
                                     )
-                            ) {
-                                Text(
-                                    day.toString(),
-                                    fontSize = 12.sp,
-                                    fontWeight = if (hasWorkout) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = when {
-                                        isToday -> MaterialTheme.colorScheme.onPrimary
-                                        hasWorkout -> MaterialTheme.colorScheme.surface
-                                        else -> MaterialTheme.colorScheme.onBackground
+                                    .clickable(enabled = true) {
+                                        onDayClick?.invoke(dayStart)
                                     }
-                                )
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        day.toString(),
+                                        fontSize = 12.sp,
+                                        fontWeight = if (hasWorkout) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = when {
+                                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                                            hasWorkout -> MaterialTheme.colorScheme.surface
+                                            else -> MaterialTheme.colorScheme.onBackground
+                                        }
+                                    )
+                                    if (isToday) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(3.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (isSelected) MaterialTheme.colorScheme.onPrimary
+                                                    else MaterialTheme.colorScheme.primary
+                                                )
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

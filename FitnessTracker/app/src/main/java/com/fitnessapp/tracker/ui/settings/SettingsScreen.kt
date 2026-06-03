@@ -6,11 +6,18 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Balance
+import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.MonitorWeight
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,16 +83,17 @@ private fun SettingsMainScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp)
     ) {
-        Spacer(Modifier.height(4.dp))
-        Column(modifier = Modifier.padding(bottom = 14.dp)) {
+        Spacer(Modifier.height(8.dp))
+        Column(modifier = Modifier.padding(bottom = 18.dp)) {
             Text("设置", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(2.dp))
             Text("管理你的训练数据", style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         SettingsGroup {
             SettingsItem(
-                icon = "📏",
+                icon = Icons.Outlined.MonitorWeight,
                 title = "身体数据",
                 description = "体重、体脂率记录",
                 trailing = { Text("${state.latestBodyWeight ?: "--"} ${state.currentUnit}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -108,14 +116,14 @@ private fun SettingsMainScreen(
 
         SettingsGroup {
             SettingsItem(
-                icon = "🏋️",
+                icon = Icons.Outlined.FitnessCenter,
                 title = "动作库管理",
                 description = "查看/添加自定义动作",
                 trailing = { Text("${state.exerciseCount} 个", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 onClick = { onNavigate(SettingsPage.EXERCISE_LIBRARY) }
             )
             SettingsItem(
-                icon = "🎨",
+                icon = Icons.Outlined.Palette,
                 title = "主题颜色",
                 description = "自定义 App 主色调",
                 trailing = {
@@ -129,14 +137,14 @@ private fun SettingsMainScreen(
                 onClick = { onNavigate(SettingsPage.THEME) }
             )
             SettingsItem(
-                icon = "⚖️",
+                icon = Icons.Outlined.Balance,
                 title = "单位设置",
                 description = "kg / lb 切换",
                 trailing = { Text(state.currentUnit, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary) },
                 onClick = { onNavigate(SettingsPage.UNIT) }
             )
             SettingsItem(
-                icon = "ℹ️",
+                icon = Icons.Outlined.Info,
                 title = "关于",
                 description = "版本 1.0",
                 onClick = { }
@@ -158,7 +166,7 @@ private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun SettingsItem(
-    icon: String,
+    icon: ImageVector,
     title: String,
     description: String,
     trailing: @Composable (() -> Unit)? = null,
@@ -177,7 +185,10 @@ private fun SettingsItem(
                         .clip(RoundedCornerShape(10.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
-                ) { Text(icon, fontSize = 17.sp) }
+                ) {
+                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp))
+                }
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)

@@ -1,6 +1,7 @@
 package com.fitnessapp.tracker.ui.workout
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +36,7 @@ private fun WorkoutHomeScreen(
         modifier = Modifier.fillMaxSize().padding(horizontal = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -43,26 +44,27 @@ private fun WorkoutHomeScreen(
         ) {
             Column {
                 Text("训练", style = MaterialTheme.typography.titleLarge)
+                Spacer(Modifier.height(2.dp))
                 Text("${DateUtils.formatDay(System.currentTimeMillis())} · 本周 ${state.recentWorkouts.size} 次",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
-        Spacer(Modifier.weight(0.6f))
+        Spacer(Modifier.weight(0.4f))
 
         Card(
             onClick = onStartWorkout,
             modifier = Modifier.size(200.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = MaterialTheme.shapes.large
+            shape = RoundedCornerShape(24.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text("+", fontSize = 36.sp, fontWeight = FontWeight.Light,
+                Text("+", fontSize = 42.sp, fontWeight = FontWeight.Light,
                     color = MaterialTheme.colorScheme.onPrimary)
                 Spacer(Modifier.height(8.dp))
                 Text("开始训练", fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
@@ -70,6 +72,6 @@ private fun WorkoutHomeScreen(
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.weight(1.2f))
     }
 }

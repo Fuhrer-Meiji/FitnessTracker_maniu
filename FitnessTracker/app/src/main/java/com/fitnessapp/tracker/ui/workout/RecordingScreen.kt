@@ -40,8 +40,9 @@ fun RecordingScreen(
         ) {
             Column {
                 Text(DateUtils.formatDuration(state.elapsedSeconds),
-                    fontSize = 24.sp, fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground)
+                    fontSize = 28.sp, fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    letterSpacing = 1.sp)
                 Text("训练时长", style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

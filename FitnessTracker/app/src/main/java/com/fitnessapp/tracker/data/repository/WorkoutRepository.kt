@@ -27,4 +27,5 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     suspend fun getWorkoutCountInRange(start: Long, end: Long): Int = dao.getWorkoutCountInRange(start, end)
     suspend fun getTotalWorkoutCount(): Int = dao.getTotalWorkoutCount()
     suspend fun getTotalDurationInRange(start: Long, end: Long): Long = dao.getTotalDurationInRange(start, end)
+    suspend fun getWorkoutsByDay(dayStart: Long, dayEnd: Long): List<Workout> = dao.getWorkoutsByDay(dayStart, dayEnd).map { it.toModel() }
 }
