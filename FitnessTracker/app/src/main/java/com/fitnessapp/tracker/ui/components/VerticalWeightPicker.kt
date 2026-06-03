@@ -75,13 +75,21 @@ private fun WheelPicker(
     val itemHeight = 36.dp
     val visibleCount = 5
 
-    val initialIndex = remember(selectedValue, values) {
+    // 重复列表制造无限滚动效果
+    val infiniteValues = remember(values) {
+        val repeats = (1000 / values.size).coerceAtLeast(3)
+        List(repeats) { values }.flatten()
+    }
+
+    val startIndex = remember(selectedValue, values, infiniteValues) {
         val idx = values.indexOf(selectedValue)
-        (if (idx >= 0) idx - visibleCount / 2 else 0).coerceAtLeast(0)
+        val midCopy = infiniteValues.size / 2
+        val offset = (midCopy / values.size / 2) * values.size
+        (if (idx >= 0) offset + idx else midCopy).coerceAtLeast(0)
     }
 
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = initialIndex
+        initialFirstVisibleItemIndex = startIndex
     )
     val snapBehavior = rememberSnapFlingBehavior(listState)
 
@@ -91,13 +99,14 @@ private fun WheelPicker(
             val center = layoutInfo.viewportSize.height / 2
             layoutInfo.visibleItemsInfo.minByOrNull {
                 abs(it.offset + it.size / 2 - center)
-            }?.index?.coerceIn(0, values.lastIndex) ?: 0
+            }?.index?.coerceIn(0, infiniteValues.lastIndex) ?: 0
         }
     }
 
+    // 用取模映射回真实值
     LaunchedEffect(selectedIndex) {
-        if (selectedIndex < values.size) {
-            onValueSelected(values[selectedIndex])
+        if (infiniteValues.isNotEmpty()) {
+            onValueSelected(values[selectedIndex % values.size])
         }
     }
 
@@ -133,7 +142,7 @@ private fun WheelPicker(
                 flingBehavior = snapBehavior,
                 modifier = Modifier.height(itemHeight * visibleCount)
             ) {
-                itemsIndexed(values) { index, v ->
+                itemsIndexed(infiniteValues) { index, v ->
                     val isCenter = index == selectedIndex
                     Text(
                         text = v,
