@@ -3,6 +3,8 @@ package com.fitnessapp.tracker.data.repository
 import com.fitnessapp.tracker.data.db.dao.WorkoutDao
 import com.fitnessapp.tracker.data.db.entity.WorkoutEntity
 import com.fitnessapp.tracker.data.db.entity.WorkoutSetEntity
+import com.fitnessapp.tracker.data.db.entity.WorkoutSetWithExercise
+import com.fitnessapp.tracker.data.db.entity.SetTrendData
 import com.fitnessapp.tracker.data.model.Workout
 import com.fitnessapp.tracker.data.model.WorkoutSet
 import kotlinx.coroutines.flow.Flow
@@ -30,4 +32,7 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     suspend fun getTotalWorkoutCount(): Int = dao.getTotalWorkoutCount()
     suspend fun getTotalDurationInRange(start: Long, end: Long): Long = dao.getTotalDurationInRange(start, end)
     suspend fun getWorkoutsByDay(dayStart: Long, dayEnd: Long): List<Workout> = dao.getWorkoutsByDay(dayStart, dayEnd).map { it.toModel() }
+    suspend fun getLastSetForExercise(exerciseId: Long): WorkoutSet? = dao.getLastSetForExercise(exerciseId)?.toModel()
+    suspend fun getWorkoutSetsWithExerciseByDay(dayStart: Long, dayEnd: Long): List<WorkoutSetWithExercise> = dao.getWorkoutSetsWithExerciseByDay(dayStart, dayEnd)
+    suspend fun getSetsForExerciseFromDate(exerciseId: Long, start: Long): List<SetTrendData> = dao.getSetsForExerciseFromDate(exerciseId, start)
 }

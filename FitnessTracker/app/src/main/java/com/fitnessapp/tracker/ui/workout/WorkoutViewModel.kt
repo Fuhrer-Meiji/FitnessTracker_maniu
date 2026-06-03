@@ -36,7 +36,8 @@ data class WorkoutUiState(
     val showExercisePicker: Boolean = false,
     val pickerTargetCardIndex: Int? = null,
     val showEndConfirm: Boolean = false,
-    val currentUnit: String = "kg"
+    val currentUnit: String = "kg",
+    val showDraftRestoreDialog: Boolean = false
 )
 
 class WorkoutViewModel(application: Application) : AndroidViewModel(application) {
@@ -129,11 +130,8 @@ class WorkoutViewModel(application: Application) : AndroidViewModel(application)
             val now = System.currentTimeMillis()
             repo.getWorkoutById(s.currentWorkoutId ?: return@launch)?.let { w ->
                 repo.updateWorkout(w.copy(endTime = now, isDraft = false))
-                s.cards.forEach { card ->
-                    card.sets.forEach { set ->
-                        repo.insertSet(set.copy(workoutId = w.id))
-                    }
-                }
+                // Note: s.cards' sets are already inserted in real-time,
+                // so we don't insert them again.
             }
             timerJob?.cancel()
             _state.update { it.copy(isRecording = false, currentWorkoutId = null, cards = emptyList(), elapsedSeconds = 0, showEndConfirm = false) }
@@ -154,24 +152,50 @@ class WorkoutViewModel(application: Application) : AndroidViewModel(application)
             reps = if (card.exercise.recordType != RecordType.DURATION) card.currentReps else null,
             durationSeconds = if (card.exercise.recordType == RecordType.DURATION) card.currentDuration else null
         )
-        card.sets.add(set)
-        card.setNumber++
-        _state.update { it.copy(cards = cards) }
+        
+        viewModelScope.launch {
+            val insertedId = repo.insertSet(set)
+            card.sets.add(set.copy(id = insertedId))
+            card.setNumber++
+            _state.update { it.copy(cards = cards) }
+        }
     }
 
     fun deleteSet(cardIndex: Int, setIndex: Int) {
         val cards = _state.value.cards.toMutableList()
         if (cardIndex < cards.size) {
-            cards[cardIndex].sets.removeAt(setIndex)
-            _state.update { it.copy(cards = cards) }
+            val card = cards[cardIndex]
+            if (setIndex < card.sets.size) {
+                val set = card.sets[setIndex]
+                viewModelScope.launch {
+                    repo.deleteSet(set)
+                    card.sets.removeAt(setIndex)
+                    
+                    // Re-index remaining sets sequentially in memory
+                    val reindexedSets = card.sets.mapIndexed { index, s ->
+                        s.copy(setNumber = index + 1)
+                    }
+                    card.sets.clear()
+                    card.sets.addAll(reindexedSets)
+                    card.setNumber = card.sets.size + 1
+                    
+                    _state.update { it.copy(cards = cards) }
+                }
+            }
         }
     }
 
     fun deleteCard(cardIndex: Int) {
         val cards = _state.value.cards.toMutableList()
         if (cardIndex < cards.size) {
-            cards.removeAt(cardIndex)
-            _state.update { it.copy(cards = cards) }
+            val card = cards[cardIndex]
+            viewModelScope.launch {
+                card.sets.forEach { set ->
+                    repo.deleteSet(set)
+                }
+                cards.removeAt(cardIndex)
+                _state.update { it.copy(cards = cards) }
+            }
         }
     }
 
@@ -188,22 +212,53 @@ class WorkoutViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun addExerciseCard(exercise: Exercise) {
-        val cards = _state.value.cards.toMutableList()
-        val updated = cards.map { it.copy(isActive = false) }.toMutableList()
-        updated.add(ActiveExerciseCard(exercise = exercise))
-        _state.update { it.copy(cards = updated, showExercisePicker = false, pickerTargetCardIndex = null) }
+        viewModelScope.launch {
+            val lastSet = repo.getLastSetForExercise(exercise.id)
+            val defaultWeight = lastSet?.weight ?: 60.0
+            val defaultReps = lastSet?.reps ?: 10
+            val defaultDuration = lastSet?.durationSeconds ?: 30
+
+            val cards = _state.value.cards.toMutableList()
+            val updated = cards.map { it.copy(isActive = false) }.toMutableList()
+            updated.add(
+                ActiveExerciseCard(
+                    exercise = exercise,
+                    currentWeight = defaultWeight,
+                    currentReps = defaultReps,
+                    currentDuration = defaultDuration
+                )
+            )
+            _state.update { it.copy(cards = updated, showExercisePicker = false, pickerTargetCardIndex = null) }
+        }
     }
 
     fun replaceCardExercise(cardIndex: Int, exercise: Exercise) {
-        val cards = _state.value.cards.toMutableList()
-        if (cardIndex < cards.size) {
-            val card = cards[cardIndex]
-            val newCard = ActiveExerciseCard(
-                exercise = exercise,
-                isActive = card.isActive
-            )
-            cards[cardIndex] = newCard
-            _state.update { it.copy(cards = cards, showExercisePicker = false, pickerTargetCardIndex = null) }
+        viewModelScope.launch {
+            val lastSet = repo.getLastSetForExercise(exercise.id)
+            val defaultWeight = lastSet?.weight ?: 60.0
+            val defaultReps = lastSet?.reps ?: 10
+            val defaultDuration = lastSet?.durationSeconds ?: 30
+
+            val cards = _state.value.cards.toMutableList()
+            if (cardIndex < cards.size) {
+                val card = cards[cardIndex]
+                
+                // Delete previous sets from DB under this draft workout
+                card.sets.forEach { set ->
+                    repo.deleteSet(set)
+                }
+
+                val newCard = ActiveExerciseCard(
+                    exercise = exercise,
+                    sets = mutableListOf(),
+                    currentWeight = defaultWeight,
+                    currentReps = defaultReps,
+                    currentDuration = defaultDuration,
+                    isActive = card.isActive
+                )
+                cards[cardIndex] = newCard
+                _state.update { it.copy(cards = cards, showExercisePicker = false, pickerTargetCardIndex = null) }
+            }
         }
     }
 
@@ -227,9 +282,65 @@ class WorkoutViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val draft = repo.getDraftWorkout()
             if (draft != null) {
-                repo.deleteSetsForWorkout(draft.id)
-                repo.deleteWorkout(draft)
+                _state.update { it.copy(showDraftRestoreDialog = true, currentWorkoutId = draft.id) }
             }
+        }
+    }
+
+    fun restoreDraftWorkout() {
+        viewModelScope.launch {
+            val draftId = _state.value.currentWorkoutId ?: return@launch
+            val draft = repo.getWorkoutById(draftId) ?: return@launch
+            val sets = repo.getSetsForWorkout(draftId)
+            val cards = mutableListOf<ActiveExerciseCard>()
+            val uniqueExerciseIds = sets.map { it.exerciseId }.distinct()
+
+            for (exId in uniqueExerciseIds) {
+                val exercise = exerciseRepo.getExerciseById(exId) ?: continue
+                val exerciseSets = sets.filter { it.exerciseId == exId }
+                val mappedSets = exerciseSets.mapIndexed { index, workoutSet ->
+                    workoutSet.copy(setNumber = index + 1)
+                }
+
+                val lastSet = mappedSets.lastOrNull()
+                val currentWeight = lastSet?.weight ?: 60.0
+                val currentReps = lastSet?.reps ?: 10
+                val currentDuration = lastSet?.durationSeconds ?: 30
+
+                cards.add(
+                    ActiveExerciseCard(
+                        exercise = exercise,
+                        sets = mappedSets.toMutableList(),
+                        currentWeight = currentWeight,
+                        currentReps = currentReps,
+                        currentDuration = currentDuration,
+                        setNumber = mappedSets.size + 1,
+                        isActive = false
+                    )
+                )
+            }
+
+            if (cards.isNotEmpty()) {
+                cards[cards.lastIndex] = cards.last().copy(isActive = true)
+            }
+
+            _state.update { it.copy(
+                isRecording = true,
+                startTime = draft.startTime,
+                elapsedSeconds = (System.currentTimeMillis() - draft.startTime) / 1000,
+                cards = cards,
+                showDraftRestoreDialog = false
+            )}
+            startTimer()
+        }
+    }
+
+    fun discardDraftWorkout() {
+        viewModelScope.launch {
+            val draftId = _state.value.currentWorkoutId ?: return@launch
+            repo.deleteSetsForWorkout(draftId)
+            repo.deleteWorkoutById(draftId)
+            _state.update { it.copy(showDraftRestoreDialog = false, currentWorkoutId = null) }
         }
     }
 }

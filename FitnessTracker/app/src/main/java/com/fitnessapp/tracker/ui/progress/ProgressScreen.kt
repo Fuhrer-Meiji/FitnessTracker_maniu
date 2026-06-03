@@ -3,12 +3,16 @@ package com.fitnessapp.tracker.ui.progress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -128,27 +132,35 @@ fun ProgressScreen(
         Spacer(Modifier.height(16.dp))
 
         StrengthTrendCard(
-            exercises = state.exercises,
             selectedExercise = state.selectedExercise,
             trendData = state.strengthTrendData,
             currentUnit = state.currentUnit,
-            onSelectExercise = { viewModel.selectExercise(it) }
+            selectedTrendType = state.selectedTrendType,
+            onSelectExerciseClick = { viewModel.showExercisePicker() },
+            onSelectTrendType = { viewModel.selectTrendType(it) }
         )
 
         Spacer(Modifier.height(24.dp))
+    }
+
+    if (state.showExercisePicker) {
+        ProgressExercisePickerModal(
+            exercises = state.exercises,
+            onSelect = { viewModel.selectExercise(it) },
+            onDismiss = { viewModel.hideExercisePicker() }
+        )
     }
 }
 
 @Composable
 private fun StrengthTrendCard(
-    exercises: List<com.fitnessapp.tracker.data.model.Exercise>,
     selectedExercise: com.fitnessapp.tracker.data.model.Exercise?,
     trendData: List<Pair<String, Double>>,
     currentUnit: String,
-    onSelectExercise: (com.fitnessapp.tracker.data.model.Exercise) -> Unit
+    selectedTrendType: TrendType,
+    onSelectExerciseClick: () -> Unit,
+    onSelectTrendType: (TrendType) -> Unit
 ) {
-    var showDropdown by remember { mutableStateOf(false) }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -172,33 +184,51 @@ private fun StrengthTrendCard(
                     Text("力量趋势", style = MaterialTheme.typography.titleMedium)
                 }
 
-                Box {
-                    Surface(
-                        onClick = { showDropdown = true },
-                        shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant
+                Surface(
+                    onClick = onSelectExerciseClick,
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        selectedExercise?.name ?: "选择动作",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                    .padding(3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                TrendType.entries.forEach { type ->
+                    val selected = type == selectedTrendType
+                    val bg = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent
+                    val fg = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                    
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(bg)
+                            .clickable { onSelectTrendType(type) }
+                            .padding(vertical = 6.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            selectedExercise?.name ?: "选择动作",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            text = type.label,
+                            fontSize = 11.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                            color = fg
                         )
-                    }
-                    DropdownMenu(
-                        expanded = showDropdown,
-                        onDismissRequest = { showDropdown = false }
-                    ) {
-                        exercises.forEach { ex ->
-                            DropdownMenuItem(
-                                text = { Text(ex.name, fontSize = 13.sp) },
-                                onClick = {
-                                    onSelectExercise(ex)
-                                    showDropdown = false
-                                }
-                            )
-                        }
                     }
                 }
             }
@@ -233,12 +263,18 @@ private fun StrengthTrendCard(
                 ) {
                     val latest = trendData.lastOrNull()
                     val prev = trendData.dropLast(1).maxOfOrNull { it.second }
+                    val (latestLabel, bestLabel) = when (selectedTrendType) {
+                        TrendType.MAX_WEIGHT -> Pair("当前重量", "最高重量")
+                        TrendType.ESTIMATED_1RM -> Pair("当前估算 1RM", "最高估算 1RM")
+                        TrendType.TOTAL_VOLUME -> Pair("本次总容量", "最高单次容量")
+                    }
+
                     Column(horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.padding(horizontal = 24.dp)) {
                         Text(latest?.let { String.format("%.1f", it.second) } ?: "--",
                             fontWeight = FontWeight.Bold, fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.primary)
-                        Text("当前 ($currentUnit)", fontSize = 11.sp,
+                        Text("$latestLabel ($currentUnit)", fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally,
@@ -246,7 +282,7 @@ private fun StrengthTrendCard(
                         Text(prev?.let { String.format("%.1f", it) } ?: "--",
                             fontWeight = FontWeight.Bold, fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.primary)
-                        Text("最高 ($currentUnit)", fontSize = 11.sp,
+                        Text("$bestLabel ($currentUnit)", fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -266,25 +302,33 @@ private fun StrengthLineChart(
     val values = data.map { it.second }
 
     Canvas(modifier = modifier) {
+        val padding = 8.dp.toPx()
+        val drawHeight = size.height - padding * 2
+
+        // Grid lines
+        for (i in 0..3) {
+            val y = padding + drawHeight * i / 3
+            drawLine(surfaceVariant, Offset(0f, y), Offset(size.width, y), strokeWidth = 0.5.dp.toPx())
+        }
+
+        if (values.size == 1) {
+            // Draw a single dot in the center of the chart
+            val p = Offset(size.width / 2, size.height / 2)
+            drawCircle(primaryColor, radius = 5.dp.toPx(), center = p)
+            return@Canvas
+        }
+
         if (values.size < 2) return@Canvas
         val maxVal = values.max()
         val minVal = values.min()
         val range = (maxVal - minVal).coerceAtLeast(1.0)
         val stepX = size.width / (values.size - 1)
-        val padding = 8.dp.toPx()
-        val drawHeight = size.height - padding * 2
 
         val points = values.mapIndexed { i, v ->
             Offset(
                 x = i * stepX,
                 y = padding + drawHeight * (1 - ((v - minVal) / range)).toFloat()
             )
-        }
-
-        // Grid lines
-        for (i in 0..3) {
-            val y = padding + drawHeight * i / 3
-            drawLine(surfaceVariant, Offset(0f, y), Offset(size.width, y), strokeWidth = 0.5.dp.toPx())
         }
 
         // Gradient fill
@@ -339,4 +383,87 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
             }
         }
     }
+}
+
+@Composable
+private fun ProgressExercisePickerModal(
+    exercises: List<com.fitnessapp.tracker.data.model.Exercise>,
+    onSelect: (com.fitnessapp.tracker.data.model.Exercise) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredExercises = remember(exercises, searchQuery) {
+        if (searchQuery.isBlank()) exercises
+        else exercises.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+    val grouped = remember(filteredExercises) {
+        filteredExercises.groupBy { it.bodyPart }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("选择趋势动作", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("搜索...", fontSize = 14.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { /* no-op */ })
+                )
+            }
+        },
+        text = {
+            Column(modifier = Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+                if (grouped.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("未找到相关动作", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    grouped.forEach { (part, exs) ->
+                        Text(part.label, fontSize = 10.sp, fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp))
+                        exs.forEach { exercise ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelect(exercise) }
+                                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(34.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(exercise.iconName.take(2), fontSize = 16.sp)
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(exercise.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                    Text(exercise.bodyPart.label, fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        }
+    )
 }

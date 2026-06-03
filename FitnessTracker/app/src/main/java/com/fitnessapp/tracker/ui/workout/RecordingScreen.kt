@@ -34,25 +34,30 @@ fun RecordingScreen(
             .padding(horizontal = 18.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
                 Text(DateUtils.formatDuration(state.elapsedSeconds),
-                    fontSize = 28.sp, fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                     letterSpacing = 1.sp)
-                Text("训练时长", style = MaterialTheme.typography.labelMedium,
+                Spacer(Modifier.height(2.dp))
+                Text("训练时长", fontSize = 11.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(
+            Surface(
                 onClick = { viewModel.showEndConfirm() },
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.errorContainer
             ) {
-                Text("结束训练", fontWeight = FontWeight.SemiBold)
+                Text("结束训练", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
             }
         }
+        Spacer(Modifier.height(4.dp))
 
         state.cards.forEachIndexed { index, card ->
             ExerciseCard(
@@ -70,10 +75,11 @@ fun RecordingScreen(
 
         OutlinedButton(
             onClick = { viewModel.showExercisePicker() },
-            modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp),
-            shape = RoundedCornerShape(10.dp)
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text("+ 添加新动作", color = MaterialTheme.colorScheme.primary)
+            Text("+ 添加新动作", fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
     }
 

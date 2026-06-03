@@ -7,6 +7,8 @@ import com.fitnessapp.tracker.FitnessApp
 import com.fitnessapp.tracker.data.model.Exercise
 import com.fitnessapp.tracker.data.model.RecordType
 import com.fitnessapp.tracker.data.model.WorkoutSet
+import com.fitnessapp.tracker.data.db.entity.WorkoutSetWithExercise
+import com.fitnessapp.tracker.data.db.entity.SetTrendData
 import com.fitnessapp.tracker.data.repository.ExerciseRepository
 import com.fitnessapp.tracker.data.repository.WorkoutRepository
 import com.fitnessapp.tracker.ui.theme.ThemeManager
@@ -16,6 +18,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
+
+enum class TrendType(val label: String) {
+    MAX_WEIGHT("最大重量"),
+    ESTIMATED_1RM("估算1RM"),
+    TOTAL_VOLUME("总容量")
+}
 
 data class DayWorkoutDetail(
     val workoutId: Long,
@@ -35,7 +43,9 @@ data class ProgressUiState(
     val workoutDates: Set<Long> = emptySet(),
     val currentUnit: String = "kg",
     val selectedDay: Long? = null,
-    val dayWorkouts: List<DayWorkoutDetail> = emptyList()
+    val dayWorkouts: List<DayWorkoutDetail> = emptyList(),
+    val selectedTrendType: TrendType = TrendType.MAX_WEIGHT,
+    val showExercisePicker: Boolean = false
 )
 
 class ProgressViewModel(application: Application) : AndroidViewModel(application) {
@@ -48,6 +58,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
     val state: StateFlow<ProgressUiState> = _state.asStateFlow()
 
     private val _selectedExerciseId = MutableStateFlow<Long?>(null)
+    private val _selectedTrendType = MutableStateFlow(TrendType.MAX_WEIGHT)
 
     init {
         loadStats()
@@ -132,11 +143,12 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             combine(
                 _selectedExerciseId,
+                _selectedTrendType,
                 themeManager.unit,
                 workoutRepo.getAllWorkouts()
-            ) { exId, unit, _ ->
-                exId to unit
-            }.collect { (exId, unit) ->
+            ) { exId, trendType, unit, _ ->
+                Triple(exId, trendType, unit)
+            }.collect { (exId, trendType, unit) ->
                 if (exId == null) {
                     _state.update { it.copy(strengthTrendData = emptyList()) }
                     return@collect
@@ -145,12 +157,38 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 cal.add(Calendar.WEEK_OF_YEAR, -5)
                 val start = DateUtils.getStartOfDay(cal.timeInMillis)
 
-                val workouts = workoutRepo.getWorkoutsInRange(start, System.currentTimeMillis()).first()
+                // Single query fetching all sets trend data
+                val setsTrendData = workoutRepo.getSetsForExerciseFromDate(exId, start)
                 val data = mutableListOf<Pair<String, Double>>()
-                for (w in workouts) {
-                    val sets = workoutRepo.getSetsForExercise(w.id, exId)
-                    val maxWeight = sets.maxOfOrNull { it.weight ?: 0.0 } ?: continue
-                    data.add(DateUtils.formatDate(w.date) to UnitConverter.displayWeight(maxWeight, unit))
+
+                // Group by workout date in-memory
+                val groupedByDate = setsTrendData.groupBy { it.date }
+                for ((date, sets) in groupedByDate) {
+                    if (sets.isEmpty()) continue
+                    
+                    val value = when (trendType) {
+                        TrendType.MAX_WEIGHT -> {
+                            val maxWeight = sets.maxOfOrNull { it.weight ?: 0.0 } ?: 0.0
+                            UnitConverter.displayWeight(maxWeight, unit)
+                        }
+                        TrendType.ESTIMATED_1RM -> {
+                            val max1RM = sets.maxOfOrNull { 
+                                val weight = it.weight ?: 0.0
+                                val reps = it.reps ?: 0
+                                weight * (1.0 + reps / 30.0)
+                            } ?: 0.0
+                            UnitConverter.displayWeight(max1RM, unit)
+                        }
+                        TrendType.TOTAL_VOLUME -> {
+                            val totalVolume = sets.sumOf { 
+                                val weight = it.weight ?: 0.0
+                                val reps = it.reps ?: 1
+                                weight * reps
+                            }
+                            UnitConverter.displayWeight(totalVolume, unit)
+                        }
+                    }
+                    data.add(DateUtils.formatDate(date) to value)
                 }
                 _state.update { it.copy(strengthTrendData = data) }
             }
@@ -158,27 +196,52 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun selectExercise(exercise: Exercise) {
-        _state.update { it.copy(selectedExercise = exercise) }
+        _state.update { it.copy(selectedExercise = exercise, showExercisePicker = false) }
         _selectedExerciseId.value = exercise.id
+    }
+
+    fun selectTrendType(trendType: TrendType) {
+        _selectedTrendType.value = trendType
+        _state.update { it.copy(selectedTrendType = trendType) }
+    }
+
+    fun showExercisePicker() {
+        _state.update { it.copy(showExercisePicker = true) }
+    }
+
+    fun hideExercisePicker() {
+        _state.update { it.copy(showExercisePicker = false) }
     }
 
     fun selectDay(dayStart: Long) {
         viewModelScope.launch {
             val dayEnd = dayStart + 86400000
-            val workouts = workoutRepo.getWorkoutsByDay(dayStart, dayEnd)
-            val details = mutableListOf<DayWorkoutDetail>()
-            for (w in workouts) {
-                val sets = workoutRepo.getSetsForWorkout(w.id)
-                val setsByExercise = sets.groupBy { it.exerciseId }
-                for ((exId, exSets) in setsByExercise) {
-                    val ex = exerciseRepo.getExerciseById(exId)
-                    details.add(DayWorkoutDetail(
-                        workoutId = w.id,
-                        exerciseName = ex?.name ?: "未知",
-                        sets = exSets
-                    ))
+            
+            // Single query fetching all sets with exercise names in 1 call
+            val joinedList = workoutRepo.getWorkoutSetsWithExerciseByDay(dayStart, dayEnd)
+            
+            // Group in-memory by workoutId and exerciseName
+            val details = joinedList.groupBy { it.workoutId to it.exerciseName }
+                .map { (key, sets) ->
+                    val (workoutId, exerciseName) = key
+                    DayWorkoutDetail(
+                        workoutId = workoutId,
+                        exerciseName = exerciseName,
+                        sets = sets.map { s ->
+                            WorkoutSet(
+                                id = s.id,
+                                workoutId = s.workoutId,
+                                exerciseId = s.exerciseId,
+                                setNumber = s.setNumber,
+                                recordType = RecordType.valueOf(s.recordType),
+                                weight = s.weight,
+                                reps = s.reps,
+                                durationSeconds = s.durationSeconds,
+                                restSeconds = s.restSeconds
+                            )
+                        }
+                    )
                 }
-            }
             _state.update { it.copy(selectedDay = dayStart, dayWorkouts = details) }
         }
     }

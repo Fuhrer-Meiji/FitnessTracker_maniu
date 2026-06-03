@@ -25,6 +25,28 @@ fun WorkoutScreen(
     } else {
         WorkoutHomeScreen(state = state, onStartWorkout = { viewModel.startWorkout() })
     }
+
+    if (state.showDraftRestoreDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Prevent dismiss by tapping outside */ },
+            title = { Text("检测到未保存的训练") },
+            text = { Text("您上一次训练异常退出，是否继续该训练？") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.restoreDraftWorkout() }
+                ) {
+                    Text("恢复训练")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.discardDraftWorkout() }
+                ) {
+                    Text("放弃并新建", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        )
+    }
 }
 
 @Composable
