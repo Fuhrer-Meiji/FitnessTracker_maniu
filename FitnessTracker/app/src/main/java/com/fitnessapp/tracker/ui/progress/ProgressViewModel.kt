@@ -12,6 +12,7 @@ import com.fitnessapp.tracker.data.repository.WorkoutRepository
 import com.fitnessapp.tracker.ui.theme.ThemeManager
 import com.fitnessapp.tracker.util.DateUtils
 import com.fitnessapp.tracker.util.UnitConverter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.*
@@ -171,6 +172,21 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 }
             }
             _state.update { it.copy(selectedDay = dayStart, dayWorkouts = details) }
+        }
+    }
+
+    fun deleteSetFromWorkout(set: com.fitnessapp.tracker.data.model.WorkoutSet) {
+        viewModelScope.launch(Dispatchers.IO) {
+            workoutRepo.deleteSet(set)
+            _state.value.selectedDay?.let { selectDay(it) }
+        }
+    }
+
+    fun deleteWorkout(workoutId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            workoutRepo.deleteWorkoutById(workoutId)
+            loadStats()
+            _state.value.selectedDay?.let { selectDay(it) }
         }
     }
 }

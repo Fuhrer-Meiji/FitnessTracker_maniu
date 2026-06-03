@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -76,22 +77,45 @@ fun ProgressScreen(
                             color = MaterialTheme.colorScheme.onBackground)
                         Spacer(Modifier.height(8.dp))
                         state.dayWorkouts.forEach { detail ->
-                            Text(detail.exerciseName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onBackground)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(detail.exerciseName, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onBackground)
+                                TextButton(
+                                    onClick = { viewModel.deleteWorkout(detail.workoutId) },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text("删除本次", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
+                                }
+                            }
                             detail.sets.forEach { set ->
-                                Row(modifier = Modifier.padding(start = 8.dp, top = 2.dp)) {
-                                    Text("第${set.setNumber}组", fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Spacer(Modifier.width(12.dp))
-                                    when (set.recordType) {
-                                        RecordType.STRENGTH -> {
-                                            val w = com.fitnessapp.tracker.util.UnitConverter.displayWeight(set.weight ?: 0.0, state.currentUnit)
-                                            Text(String.format("%.1f ${state.currentUnit}", w), fontSize = 11.sp)
-                                            if (set.reps != null) { Spacer(Modifier.width(8.dp)); Text("× ${set.reps} 次", fontSize = 11.sp) }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, top = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row {
+                                        Text("第${set.setNumber}组", fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Spacer(Modifier.width(12.dp))
+                                        when (set.recordType) {
+                                            RecordType.STRENGTH -> {
+                                                val w = com.fitnessapp.tracker.util.UnitConverter.displayWeight(set.weight ?: 0.0, state.currentUnit)
+                                                Text(String.format("%.1f ${state.currentUnit}", w), fontSize = 11.sp)
+                                                if (set.reps != null) { Spacer(Modifier.width(8.dp)); Text("× ${set.reps} 次", fontSize = 11.sp) }
+                                            }
+                                            RecordType.REPS -> Text("${set.reps} 次", fontSize = 11.sp)
+                                            RecordType.DURATION -> Text("${set.durationSeconds} 秒", fontSize = 11.sp)
                                         }
-                                        RecordType.REPS -> Text("${set.reps} 次", fontSize = 11.sp)
-                                        RecordType.DURATION -> Text("${set.durationSeconds} 秒", fontSize = 11.sp)
                                     }
+                                    Text("✕", fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier
+                                            .clickable { viewModel.deleteSetFromWorkout(set) }
+                                            .padding(4.dp))
                                 }
                             }
                             Spacer(Modifier.height(6.dp))

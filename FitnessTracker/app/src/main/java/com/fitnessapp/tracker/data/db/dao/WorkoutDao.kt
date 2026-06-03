@@ -55,6 +55,12 @@ interface WorkoutDao {
     @Query("DELETE FROM workout_sets WHERE workoutId = :workoutId")
     suspend fun deleteSetsForWorkout(workoutId: Long)
 
+    @Delete
+    suspend fun deleteSet(set: WorkoutSetEntity)
+
+    @Query("DELETE FROM workouts WHERE id = :id")
+    suspend fun deleteWorkoutById(id: Long)
+
     @Query("SELECT COUNT(*) FROM workouts WHERE isDraft = 0 AND date >= :start AND date <= :end")
     suspend fun getWorkoutCountInRange(start: Long, end: Long): Int
 

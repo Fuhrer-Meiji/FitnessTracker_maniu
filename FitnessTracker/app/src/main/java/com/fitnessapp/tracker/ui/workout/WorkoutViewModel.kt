@@ -167,6 +167,14 @@ class WorkoutViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun deleteCard(cardIndex: Int) {
+        val cards = _state.value.cards.toMutableList()
+        if (cardIndex < cards.size) {
+            cards.removeAt(cardIndex)
+            _state.update { it.copy(cards = cards) }
+        }
+    }
+
     fun adjustField(cardIndex: Int, field: String, delta: Double) {
         val cards = _state.value.cards.toMutableList()
         if (cardIndex >= cards.size) return

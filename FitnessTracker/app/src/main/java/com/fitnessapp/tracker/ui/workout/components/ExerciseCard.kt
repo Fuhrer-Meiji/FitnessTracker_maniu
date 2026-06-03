@@ -24,6 +24,7 @@ fun ExerciseCard(
     onAdjustField: (String, Double) -> Unit,
     onAddSet: () -> Unit,
     onDeleteSet: (Int) -> Unit,
+    onDeleteCard: (() -> Unit)? = null,
     onChangeExercise: ((Int) -> Unit)? = null,
     currentUnit: String = "kg",
     modifier: Modifier = Modifier
@@ -60,11 +61,19 @@ fun ExerciseCard(
                     }
                 }
                 if (card.isActive && onChangeExercise != null) {
-                    TextButton(
-                        onClick = { onChangeExercise(cardIndex) },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text("换动作", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                    Row {
+                        TextButton(
+                            onClick = { onDeleteCard?.invoke() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("删除", fontSize = 11.sp, color = MaterialTheme.colorScheme.error)
+                        }
+                        TextButton(
+                            onClick = { onChangeExercise(cardIndex) },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("换动作", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
                 if (!card.isActive) {

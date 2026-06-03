@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitnessapp.tracker.data.model.RecordType
 import com.fitnessapp.tracker.ui.components.Stepper
+import com.fitnessapp.tracker.ui.components.VerticalWeightPicker
 import com.fitnessapp.tracker.util.UnitConverter
 
 @Composable
@@ -48,33 +49,20 @@ fun RecordPanel(
 
         when (recordType) {
             RecordType.STRENGTH -> {
-                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically) {
+                    val displayWeight = UnitConverter.displayWeight(weight, currentUnit)
+                    VerticalWeightPicker(
+                        value = displayWeight,
+                        onValueChange = { newDisplayWeight ->
+                            val inKg = if (currentUnit == "lb") UnitConverter.lbToKg(newDisplayWeight) else newDisplayWeight
+                            onWeightChange(inKg)
+                        },
+                        label = "重量 ($currentUnit)",
+                        modifier = Modifier.padding(end = 24.dp)
+                    )
                     Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("重量 ($currentUnit)", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.dp))
-                        val displayWeight = UnitConverter.displayWeight(weight, currentUnit)
-                        Stepper(
-                            value = String.format("%.1f", displayWeight),
-                            onDecrement = {
-                                val step = if (currentUnit == "lb") 2.5 / UnitConverter.KG_TO_LB else 2.5
-                                onWeightChange(weight - step)
-                            },
-                            onIncrement = {
-                                val step = if (currentUnit == "lb") 2.5 / UnitConverter.KG_TO_LB else 2.5
-                                onWeightChange(weight + step)
-                            },
-                            onValueConfirm = { v ->
-                                v.toDoubleOrNull()?.let {
-                                    val inKg = if (currentUnit == "lb") UnitConverter.lbToKg(it) else it
-                                    onWeightChange(inKg)
-                                }
-                            }
-                        )
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("次数", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.dp))

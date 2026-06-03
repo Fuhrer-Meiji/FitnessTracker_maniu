@@ -24,6 +24,8 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     suspend fun updateWorkout(workout: Workout) = dao.updateWorkout(WorkoutEntity.fromModel(workout))
     suspend fun deleteWorkout(workout: Workout) = dao.deleteWorkout(WorkoutEntity.fromModel(workout))
     suspend fun deleteSetsForWorkout(workoutId: Long) = dao.deleteSetsForWorkout(workoutId)
+    suspend fun deleteSet(set: WorkoutSet) = dao.deleteSet(WorkoutSetEntity.fromModel(set))
+    suspend fun deleteWorkoutById(id: Long) = dao.deleteWorkoutById(id)
     suspend fun getWorkoutCountInRange(start: Long, end: Long): Int = dao.getWorkoutCountInRange(start, end)
     suspend fun getTotalWorkoutCount(): Int = dao.getTotalWorkoutCount()
     suspend fun getTotalDurationInRange(start: Long, end: Long): Long = dao.getTotalDurationInRange(start, end)

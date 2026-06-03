@@ -61,6 +61,7 @@ fun RecordingScreen(
                 onAdjustField = { field, delta -> viewModel.adjustField(index, field, delta) },
                 onAddSet = { viewModel.addSetToCard(index) },
                 onDeleteSet = { setIndex -> viewModel.deleteSet(index, setIndex) },
+                onDeleteCard = { viewModel.deleteCard(index) },
                 onChangeExercise = { viewModel.showExercisePicker(index) },
                 currentUnit = state.currentUnit,
                 modifier = Modifier.padding(bottom = 10.dp)
