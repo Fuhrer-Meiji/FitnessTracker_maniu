@@ -12,6 +12,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fitnessapp.tracker.data.model.RecordType
+import com.fitnessapp.tracker.ui.components.RepsWheelPicker
 import com.fitnessapp.tracker.ui.components.Stepper
 import com.fitnessapp.tracker.ui.components.VerticalWeightPicker
 import com.fitnessapp.tracker.util.UnitConverter
@@ -66,11 +67,10 @@ fun RecordPanel(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text("次数", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.dp))
-                        Stepper(
-                            value = reps.toString(),
-                            onDecrement = { onRepsChange(reps - 1) },
-                            onIncrement = { onRepsChange(reps + 1) },
-                            onValueConfirm = { v -> v.toIntOrNull()?.let { onRepsChange(it) } }
+                        RepsWheelPicker(
+                            value = reps,
+                            onValueChange = { onRepsChange(it) },
+                            modifier = Modifier.padding(start = 24.dp)
                         )
                     }
                 }
@@ -81,11 +81,9 @@ fun RecordPanel(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("次数", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 5.dp))
-                    Stepper(
-                        value = reps.toString(),
-                        onDecrement = { onRepsChange(reps - 1) },
-                        onIncrement = { onRepsChange(reps + 1) },
-                        onValueConfirm = { v -> v.toIntOrNull()?.let { onRepsChange(it) } }
+                    RepsWheelPicker(
+                        value = reps,
+                        onValueChange = { onRepsChange(it) }
                     )
                 }
             }

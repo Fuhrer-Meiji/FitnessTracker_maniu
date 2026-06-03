@@ -1,32 +1,26 @@
 package com.fitnessapp.tracker.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import kotlin.math.abs
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VerticalWeightPicker(
     value: Double,
@@ -35,12 +29,76 @@ fun VerticalWeightPicker(
     label: String = "",
     modifier: Modifier = Modifier
 ) {
-    var isEditing by remember { mutableStateOf(false) }
-    var editText by remember { mutableStateOf(String.format("%.1f", value)) }
-    val focusRequester = remember { FocusRequester() }
+    val values = remember(step) {
+        generateSequence(0.0) { String.format("%.1f", it + step).toDouble() }
+            .takeWhile { it <= 150.0 }
+            .toList()
+    }
 
-    fun finishEditing() {
-        editText.toDoubleOrNull()?.let { onValueChange(it) }
+    WheelPicker(
+        values = values.map { String.format("%.1f", it) },
+        selectedValue = String.format("%.1f", value),
+        label = label,
+        onValueSelected = { s -> s.toDoubleOrNull()?.let { onValueChange(it) } },
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun RepsWheelPicker(
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    label: String = "",
+    modifier: Modifier = Modifier
+) {
+    val values = remember { (1..99).toList() }
+
+    WheelPicker(
+        values = values.map { it.toString() },
+        selectedValue = value.toString(),
+        label = label,
+        onValueSelected = { s -> s.toIntOrNull()?.let { onValueChange(it) } },
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun WheelPicker(
+    values: List<String>,
+    selectedValue: String,
+    label: String,
+    onValueSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val itemHeight = 36.dp
+    val visibleCount = 5
+
+    val initialIndex = remember(selectedValue, values) {
+        val idx = values.indexOf(selectedValue)
+        (if (idx >= 0) idx - visibleCount / 2 else 0).coerceAtLeast(0)
+    }
+
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = initialIndex
+    )
+    val snapBehavior = rememberSnapFlingBehavior(listState)
+
+    val selectedIndex by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val center = layoutInfo.viewportSize.height / 2
+            layoutInfo.visibleItemsInfo.minByOrNull {
+                abs(it.offset + it.size / 2 - center)
+            }?.index?.coerceIn(0, values.lastIndex) ?: 0
+        }
+    }
+
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex < values.size) {
+            onValueSelected(values[selectedIndex])
+        }
     }
 
     Column(
@@ -53,94 +111,43 @@ fun VerticalWeightPicker(
                 modifier = Modifier.padding(bottom = 4.dp))
         }
 
-        // 上箭头
-        Text("▲", fontSize = 10.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
-
-        Spacer(Modifier.height(2.dp))
-
-        // 数值区域 - 支持上下滑动和点击输入
         Box(
-            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .width(80.dp)
-                .height(60.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures { _, dragAmount ->
-                        val delta = -dragAmount / 6f
-                        val newVal = kotlin.math.max(0.0, kotlin.math.round((value + delta) * 10) / 10.0)
-                        onValueChange(newVal)
-                    }
-                }
         ) {
-            if (isEditing) {
-                OutlinedTextField(
-                    value = editText,
-                    onValueChange = { editText = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester)
-                        .onFocusChanged { if (!it.isFocused) { finishEditing(); isEditing = false } },
-                    singleLine = true,
-                    textStyle = TextStyle(
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground,
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(itemHeight)
+                    .align(Alignment.Center)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        RoundedCornerShape(6.dp)
+                    )
+            )
+
+            LazyColumn(
+                state = listState,
+                flingBehavior = snapBehavior,
+                modifier = Modifier.height(itemHeight * visibleCount)
+            ) {
+                itemsIndexed(values) { index, v ->
+                    val isCenter = index == selectedIndex
+                    Text(
+                        text = v,
+                        fontSize = if (isCenter) 22.sp else 15.sp,
+                        fontWeight = if (isCenter) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isCenter) MaterialTheme.colorScheme.onBackground
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(itemHeight),
                         textAlign = TextAlign.Center
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = { finishEditing(); isEditing = false }
-                    ),
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                LaunchedEffect(isEditing) {
-                    if (isEditing) {
-                        delay(100)
-                        focusRequester.requestFocus()
-                    }
+                    )
                 }
-            } else {
-                Text(
-                    text = String.format("%.1f", value),
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickableWithRipple {
-                            editText = String.format("%.1f", value)
-                            isEditing = true
-                        }
-                )
             }
         }
-
-        Spacer(Modifier.height(2.dp))
-
-        // 下箭头
-        Text("▼", fontSize = 10.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
     }
 }
-
-private fun Modifier.clickableWithRipple(onClick: () -> Unit): Modifier = this
-    .then(
-        androidx.compose.foundation.clickable(
-            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-            indication = androidx.compose.material3.ripple(),
-            onClick = onClick
-        )
-    )
