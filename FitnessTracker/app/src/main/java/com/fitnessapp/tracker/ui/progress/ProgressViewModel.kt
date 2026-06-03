@@ -66,25 +66,29 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadStats() {
         viewModelScope.launch {
-            val cal = Calendar.getInstance()
-            val now = System.currentTimeMillis()
-
-            cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-            val weekStart = DateUtils.getStartOfDay(cal.timeInMillis)
-            cal.set(Calendar.DAY_OF_MONTH, 1)
-            val monthStart = DateUtils.getStartOfDay(cal.timeInMillis)
-
-            _state.update {
-                it.copy(
-                    weeklyCount = workoutRepo.getWorkoutCountInRange(weekStart, now),
-                    monthlyCount = workoutRepo.getWorkoutCountInRange(monthStart, now),
-                    totalCount = workoutRepo.getTotalWorkoutCount(),
-                    totalDuration = workoutRepo.getTotalDurationInRange(monthStart, now)
-                )
-            }
-
-            loadDailyFrequency(monthStart)
+            refreshStats()
         }
+    }
+
+    private suspend fun refreshStats() {
+        val cal = Calendar.getInstance()
+        val now = System.currentTimeMillis()
+
+        cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        val weekStart = DateUtils.getStartOfDay(cal.timeInMillis)
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        val monthStart = DateUtils.getStartOfDay(cal.timeInMillis)
+
+        _state.update {
+            it.copy(
+                weeklyCount = workoutRepo.getWorkoutCountInRange(weekStart, now),
+                monthlyCount = workoutRepo.getWorkoutCountInRange(monthStart, now),
+                totalCount = workoutRepo.getTotalWorkoutCount(),
+                totalDuration = workoutRepo.getTotalDurationInRange(monthStart, now)
+            )
+        }
+
+        refreshDailyFrequency(monthStart)
     }
 
     private fun observeExercises() {
@@ -102,22 +106,26 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadDailyFrequency(monthStart: Long) {
         viewModelScope.launch {
-            val cal = Calendar.getInstance()
-            cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
-            val monthEnd = DateUtils.getEndOfDay(cal.timeInMillis)
-
-            val workouts = workoutRepo.getWorkoutsInRange(monthStart, monthEnd).first()
-            val dayCounts = workouts.groupBy { w ->
-                val c = Calendar.getInstance()
-                c.timeInMillis = w.date
-                c.get(Calendar.DAY_OF_MONTH)
-            }.mapValues { it.value.size }
-
-            _state.update { it.copy(
-                dailyFrequency = dayCounts,
-                workoutDates = workouts.map { DateUtils.getStartOfDay(it.date) }.toSet()
-            )}
+            refreshDailyFrequency(monthStart)
         }
+    }
+
+    private suspend fun refreshDailyFrequency(monthStart: Long) {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH))
+        val monthEnd = DateUtils.getEndOfDay(cal.timeInMillis)
+
+        val workouts = workoutRepo.getWorkoutsInRange(monthStart, monthEnd).first()
+        val dayCounts = workouts.groupBy { w ->
+            val c = Calendar.getInstance()
+            c.timeInMillis = w.date
+            c.get(Calendar.DAY_OF_MONTH)
+        }.mapValues { it.value.size }
+
+        _state.update { it.copy(
+            dailyFrequency = dayCounts,
+            workoutDates = workouts.map { DateUtils.getStartOfDay(it.date) }.toSet()
+        )}
     }
 
     private fun observeTrend() {
@@ -178,6 +186,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
     fun deleteSetFromWorkout(set: com.fitnessapp.tracker.data.model.WorkoutSet) {
         viewModelScope.launch(Dispatchers.IO) {
             workoutRepo.deleteSet(set)
+            refreshStats()
             _state.value.selectedDay?.let { selectDay(it) }
         }
     }
@@ -185,7 +194,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
     fun deleteWorkout(workoutId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             workoutRepo.deleteWorkoutById(workoutId)
-            loadStats()
+            refreshStats()
             _state.value.selectedDay?.let { selectDay(it) }
         }
     }
