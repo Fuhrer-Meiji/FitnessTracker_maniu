@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.fitnessapp.tracker.FitnessApp
 import com.fitnessapp.tracker.data.model.BodyMetric
 import com.fitnessapp.tracker.data.model.BodyPart
+import com.fitnessapp.tracker.data.model.Equipment
 import com.fitnessapp.tracker.data.model.Exercise
 import com.fitnessapp.tracker.data.model.RecordType
 import com.fitnessapp.tracker.data.repository.BodyMetricRepository
@@ -22,7 +23,9 @@ data class SettingsUiState(
     val exerciseCount: Int = 0,
     val exercises: List<Exercise> = emptyList(),
     val currentThemeIndex: Int = 0,
-    val currentUnit: String = "kg"
+    val currentUnit: String = "kg",
+    val bgImageEnabled: Boolean = false,
+    val bgImagePath: String? = null
 )
 
 class SettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -38,6 +41,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         loadData()
         observeTheme()
         observeUnit()
+        observeBackground()
     }
 
     private fun loadData() {
@@ -82,12 +86,33 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    private fun observeBackground() {
+        viewModelScope.launch {
+            themeManager.bgImageEnabled.collect { enabled ->
+                _state.update { it.copy(bgImageEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            themeManager.bgImagePath.collect { path ->
+                _state.update { it.copy(bgImagePath = path) }
+            }
+        }
+    }
+
     fun setThemeIndex(index: Int) {
         viewModelScope.launch { themeManager.setThemeIndex(index) }
     }
 
     fun setUnit(unit: String) {
         viewModelScope.launch { themeManager.setUnit(unit) }
+    }
+
+    fun setBgImageEnabled(enabled: Boolean) {
+        viewModelScope.launch { themeManager.setBgImageEnabled(enabled) }
+    }
+
+    fun setBgImagePath(path: String?) {
+        viewModelScope.launch { themeManager.setBgImagePath(path) }
     }
 
     fun addBodyMetric(weight: Double?, bodyFat: Double?) {
@@ -101,10 +126,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { bodyMetricRepo.delete(metric) }
     }
 
-    fun addExercise(name: String, bodyPart: BodyPart, recordType: RecordType, iconName: String) {
+    fun addExercise(name: String, bodyPart: BodyPart, equipment: Equipment, recordType: RecordType, iconName: String) {
         viewModelScope.launch {
             exerciseRepo.insert(Exercise(
-                name = name, bodyPart = bodyPart, recordType = recordType,
+                name = name, bodyPart = bodyPart, equipment = equipment, recordType = recordType,
                 iconName = iconName, isPreset = false
             ))
         }

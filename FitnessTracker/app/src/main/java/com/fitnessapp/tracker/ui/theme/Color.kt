@@ -10,12 +10,12 @@ data class ThemeColors(
 )
 
 val THEMES = listOf(
-    ThemeColors(Color(0xFF6C63FF), Color(0xFF8B83FF), Color(0xFFF0EEFF), "紫罗兰"),
-    ThemeColors(Color(0xFF2ECC71), Color(0xFF58D68D), Color(0xFFEAF2F1), "翡翠绿"),
-    ThemeColors(Color(0xFF3498DB), Color(0xFF5DADE2), Color(0xFFEBF5FB), "天空蓝"),
-    ThemeColors(Color(0xFFE67E22), Color(0xFFEB984E), Color(0xFFFDF2E9), "日落橙"),
-    ThemeColors(Color(0xFFE74C3C), Color(0xFFEC7063), Color(0xFFFDEDEC), "玫瑰红"),
-    ThemeColors(Color(0xFF1A1A2E), Color(0xFF2D2D44), Color(0xFFEEEEF4), "暗夜黑"),
-    ThemeColors(Color(0xFF4A4A4A), Color(0xFF6B6B6B), Color(0xFFF0F0F0), "石墨灰"),
-    ThemeColors(Color(0xFFFF6B6B), Color(0xFFFF8E8E), Color(0xFFFFF0F0), "珊瑚粉")
+    ThemeColors(Color(0xFF9E8BFF), Color(0xFFB5A7FF), Color(0x1F9E8BFF), "紫罗兰"),
+    ThemeColors(Color(0xFF00E676), Color(0xFF66FFA6), Color(0x1F00E676), "翡翠绿"),
+    ThemeColors(Color(0xFF00B0FF), Color(0xFF82B1FF), Color(0x1F00B0FF), "天空蓝"),
+    ThemeColors(Color(0xFFFF6D00), Color(0xFFFFAB40), Color(0x1FFF6D00), "日落橙"),
+    ThemeColors(Color(0xFFFF1744), Color(0xFFFF5252), Color(0x1FFFF1744), "玫瑰红"),
+    ThemeColors(Color(0xFF00E5FF), Color(0xFF80DEEA), Color(0x1F00E5FF), "深海蓝"),
+    ThemeColors(Color(0xFFAEEA00), Color(0xFFE4FF3A), Color(0x1FAEEA00), "火山绿"),
+    ThemeColors(Color(0xFFFFD600), Color(0xFFFFE57F), Color(0x1FFFD600), "香槟金")
 )

@@ -9,8 +9,10 @@ import com.fitnessapp.tracker.data.model.RecordType
 import com.fitnessapp.tracker.data.model.WorkoutSet
 import com.fitnessapp.tracker.data.db.entity.WorkoutSetWithExercise
 import com.fitnessapp.tracker.data.db.entity.SetTrendData
+import com.fitnessapp.tracker.data.db.dao.WorkoutSetWithDate
 import com.fitnessapp.tracker.data.repository.ExerciseRepository
 import com.fitnessapp.tracker.data.repository.WorkoutRepository
+import com.fitnessapp.tracker.data.repository.BodyMetricRepository
 import com.fitnessapp.tracker.ui.theme.ThemeManager
 import com.fitnessapp.tracker.util.DateUtils
 import com.fitnessapp.tracker.util.UnitConverter
@@ -45,13 +47,19 @@ data class ProgressUiState(
     val selectedDay: Long? = null,
     val dayWorkouts: List<DayWorkoutDetail> = emptyList(),
     val selectedTrendType: TrendType = TrendType.MAX_WEIGHT,
-    val showExercisePicker: Boolean = false
+    val showExercisePicker: Boolean = false,
+    val bodyPartCounts: Map<com.fitnessapp.tracker.data.model.BodyPart, Int> = emptyMap(),
+    val dailyCalories: List<Pair<String, Double>> = emptyList(),
+    val latestWeight: Double = 70.0,
+    val showWeightDialog: Boolean = false,
+    val exerciseSetsHistory: List<WorkoutSetWithDate> = emptyList()
 )
 
 class ProgressViewModel(application: Application) : AndroidViewModel(application) {
     private val db = (application as FitnessApp).database
     private val workoutRepo = WorkoutRepository(db.workoutDao())
     private val exerciseRepo = ExerciseRepository(db.exerciseDao())
+    private val bodyMetricRepo = BodyMetricRepository(db.bodyMetricDao())
     private val themeManager = ThemeManager(application)
 
     private val _state = MutableStateFlow(ProgressUiState())
@@ -90,16 +98,69 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
         cal.set(Calendar.DAY_OF_MONTH, 1)
         val monthStart = DateUtils.getStartOfDay(cal.timeInMillis)
 
+        // 1. Fetch all workouts and sets to calculate calories
+        val workouts = workoutRepo.getAllWorkouts().first()
+        val allSets = workoutRepo.getAllWorkoutSetsWithExercise()
+
+        // 2. Fetch body part counts for all-time history
+        val allBodyParts = com.fitnessapp.tracker.data.model.BodyPart.entries
+        val countsMap = allBodyParts.associateWith { part ->
+            allSets.count { it.bodyPart == part.name }
+        }
+        val latestWeight = bodyMetricRepo.getLatestMetric()?.weight ?: 70.0
+
+        val workoutsWithCal = workouts.map { w ->
+            val wSets = allSets.filter { it.workoutId == w.id }
+            val avgMet = if (wSets.isEmpty()) 5.0 else wSets.map { getMetForBodyPart(it.bodyPart) }.average()
+            val durationHours = ((w.endTime ?: w.startTime) - w.startTime) / 3600000.0
+            val estimatedDurationHours = (wSets.size * 2.0) / 60.0
+            val finalDurationHours = maxOf(durationHours, estimatedDurationHours).coerceIn(0.08, 4.0)
+            val kcal = if (wSets.isEmpty()) 0.0 else avgMet * latestWeight * finalDurationHours
+            w to kcal
+        }
+
+        val dailyCalMap = workoutsWithCal.groupBy { DateUtils.getStartOfDay(it.first.date) }
+            .mapValues { entry -> entry.value.sumOf { it.second } }
+
+        val barDateFormat = java.text.SimpleDateFormat("M/d", java.util.Locale.CHINESE)
+        val dailyCaloriesData = dailyCalMap.toList()
+            .sortedBy { it.first }
+            .takeLast(10)
+            .map { (timestamp, kcal) ->
+                barDateFormat.format(java.util.Date(timestamp)) to kcal
+            }
+
         _state.update {
             it.copy(
                 weeklyCount = workoutRepo.getWorkoutCountInRange(weekStart, now),
                 monthlyCount = workoutRepo.getWorkoutCountInRange(monthStart, now),
                 totalCount = workoutRepo.getTotalWorkoutCount(),
-                totalDuration = workoutRepo.getTotalDurationInRange(monthStart, now)
+                totalDuration = workoutRepo.getTotalDurationInRange(monthStart, now),
+                bodyPartCounts = countsMap,
+                dailyCalories = dailyCaloriesData,
+                latestWeight = latestWeight
             )
         }
 
         refreshDailyFrequency(monthStart)
+    }
+
+    private fun getMetForBodyPart(bodyPartStr: String): Double {
+        return try {
+            val bodyPart = com.fitnessapp.tracker.data.model.BodyPart.valueOf(bodyPartStr)
+            when (bodyPart) {
+                com.fitnessapp.tracker.data.model.BodyPart.CARDIO -> 8.0
+                com.fitnessapp.tracker.data.model.BodyPart.FULL_BODY -> 6.0
+                com.fitnessapp.tracker.data.model.BodyPart.LEGS -> 5.5
+                com.fitnessapp.tracker.data.model.BodyPart.CHEST,
+                com.fitnessapp.tracker.data.model.BodyPart.BACK,
+                com.fitnessapp.tracker.data.model.BodyPart.SHOULDERS -> 5.0
+                com.fitnessapp.tracker.data.model.BodyPart.ARMS -> 4.5
+                com.fitnessapp.tracker.data.model.BodyPart.CORE -> 4.0
+            }
+        } catch (e: Exception) {
+            5.0
+        }
     }
 
     private fun observeExercises() {
@@ -150,7 +211,7 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                 Triple(exId, trendType, unit)
             }.collect { (exId, trendType, unit) ->
                 if (exId == null) {
-                    _state.update { it.copy(strengthTrendData = emptyList()) }
+                    _state.update { it.copy(strengthTrendData = emptyList(), exerciseSetsHistory = emptyList()) }
                     return@collect
                 }
                 val cal = Calendar.getInstance()
@@ -190,7 +251,9 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
                     }
                     data.add(DateUtils.formatDate(date) to value)
                 }
-                _state.update { it.copy(strengthTrendData = data) }
+
+                val setsHistory = workoutRepo.getSetsForExerciseWithDate(exId)
+                _state.update { it.copy(strengthTrendData = data, exerciseSetsHistory = setsHistory) }
             }
         }
     }
@@ -259,6 +322,32 @@ class ProgressViewModel(application: Application) : AndroidViewModel(application
             workoutRepo.deleteWorkoutById(workoutId)
             refreshStats()
             _state.value.selectedDay?.let { selectDay(it) }
+        }
+    }
+
+    fun logWeight(weight: Double) {
+        viewModelScope.launch {
+            bodyMetricRepo.insert(
+                com.fitnessapp.tracker.data.model.BodyMetric(
+                    date = System.currentTimeMillis(),
+                    weight = weight
+                )
+            )
+            refreshStats()
+        }
+    }
+
+    fun showWeightDialog(show: Boolean) {
+        _state.update { it.copy(showWeightDialog = show) }
+    }
+
+    fun deleteSetFromTrend(setId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            workoutRepo.deleteSetById(setId)
+            refreshStats()
+            val currentId = _selectedExerciseId.value
+            _selectedExerciseId.value = null
+            _selectedExerciseId.value = currentId
         }
     }
 }

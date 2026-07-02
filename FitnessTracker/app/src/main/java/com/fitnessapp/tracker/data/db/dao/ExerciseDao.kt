@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExerciseDao {
-    @Query("SELECT * FROM exercises ORDER BY isPreset DESC, name ASC")
+    @Query("SELECT * FROM exercises ORDER BY isPreset ASC, name ASC")
     fun getAllExercises(): Flow<List<ExerciseEntity>>
 
     @Query("SELECT * FROM exercises")

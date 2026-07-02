@@ -9,5 +9,7 @@ data class WorkoutSet(
     val weight: Double? = null,
     val reps: Int? = null,
     val durationSeconds: Int? = null,
-    val restSeconds: Int? = null
+    val restSeconds: Int? = null,
+    val isCompleted: Boolean = true,
+    val supersetId: String? = null
 )

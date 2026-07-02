@@ -33,6 +33,13 @@ class WorkoutRepository(private val dao: WorkoutDao) {
     suspend fun getTotalDurationInRange(start: Long, end: Long): Long = dao.getTotalDurationInRange(start, end)
     suspend fun getWorkoutsByDay(dayStart: Long, dayEnd: Long): List<Workout> = dao.getWorkoutsByDay(dayStart, dayEnd).map { it.toModel() }
     suspend fun getLastSetForExercise(exerciseId: Long): WorkoutSet? = dao.getLastSetForExercise(exerciseId)?.toModel()
+    suspend fun getMaxWeightSetForExercise(exerciseId: Long): WorkoutSet? = dao.getMaxWeightSetForExercise(exerciseId)?.toModel()
+    suspend fun getMaxRepsSetForExercise(exerciseId: Long): WorkoutSet? = dao.getMaxRepsSetForExercise(exerciseId)?.toModel()
+    suspend fun getMaxDurationSetForExercise(exerciseId: Long): WorkoutSet? = dao.getMaxDurationSetForExercise(exerciseId)?.toModel()
     suspend fun getWorkoutSetsWithExerciseByDay(dayStart: Long, dayEnd: Long): List<WorkoutSetWithExercise> = dao.getWorkoutSetsWithExerciseByDay(dayStart, dayEnd)
+    suspend fun getAllWorkoutSetsWithExercise(): List<WorkoutSetWithExercise> = dao.getAllWorkoutSetsWithExercise()
+    suspend fun getBodyPartSetsCount(): List<com.fitnessapp.tracker.data.db.dao.BodyPartCount> = dao.getBodyPartSetsCount()
     suspend fun getSetsForExerciseFromDate(exerciseId: Long, start: Long): List<SetTrendData> = dao.getSetsForExerciseFromDate(exerciseId, start)
+    suspend fun deleteSetById(id: Long) = dao.deleteSetById(id)
+    suspend fun getSetsForExerciseWithDate(exerciseId: Long): List<com.fitnessapp.tracker.data.db.dao.WorkoutSetWithDate> = dao.getSetsForExerciseWithDate(exerciseId)
 }

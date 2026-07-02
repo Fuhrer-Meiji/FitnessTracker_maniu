@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import com.fitnessapp.tracker.ui.navigation.AppNavigation
+import com.fitnessapp.tracker.ui.splash.SplashScreen
 import com.fitnessapp.tracker.ui.theme.*
 
 class MainActivity : ComponentActivity() {
@@ -16,9 +17,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeIndex by themeManager.themeIndex.collectAsState(initial = 0)
             val themeColors = THEMES[themeIndex]
+            var showSplash by remember { mutableStateOf(true) }
+
             CompositionLocalProvider(LocalThemeColors provides themeColors) {
                 FitnessTheme(themeColors = themeColors) {
-                    AppNavigation()
+                    if (showSplash) {
+                        SplashScreen(onTimeout = { showSplash = false })
+                    } else {
+                        AppNavigation()
+                    }
                 }
             }
         }

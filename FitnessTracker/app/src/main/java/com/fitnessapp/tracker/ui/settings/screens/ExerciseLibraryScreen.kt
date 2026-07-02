@@ -2,9 +2,11 @@ package com.fitnessapp.tracker.ui.settings.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,19 +19,23 @@ import androidx.compose.ui.unit.sp
 import com.fitnessapp.tracker.data.model.BodyPart
 import com.fitnessapp.tracker.data.model.Exercise
 import com.fitnessapp.tracker.data.model.RecordType
+import com.fitnessapp.tracker.data.model.Equipment
 
 @Composable
 fun ExerciseLibraryScreen(
     exercises: List<Exercise>,
     onBack: () -> Unit,
-    onAddExercise: (String, BodyPart, RecordType, String) -> Unit,
+    onAddExercise: (String, BodyPart, Equipment, RecordType, String) -> Unit,
     onDeleteExercise: (Exercise) -> Unit
 ) {
     var showAddForm by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
     var selectedBodyPart by remember { mutableStateOf(BodyPart.CHEST) }
+    var selectedEquipment by remember { mutableStateOf(Equipment.BARBELL) }
     var selectedRecordType by remember { mutableStateOf(RecordType.STRENGTH) }
     var iconName by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
 
     val grouped = remember(exercises) {
         exercises.groupBy { it.bodyPart }.entries.sortedBy { it.key.ordinal }
@@ -52,7 +58,13 @@ fun ExerciseLibraryScreen(
         ) {
             item {
                 Button(
-                    onClick = { showAddForm = !showAddForm },
+                    onClick = { 
+                        showAddForm = !showAddForm
+                        if (!showAddForm) {
+                            errorMessage = null
+                            successMessage = null
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp)
                 ) {
@@ -73,25 +85,48 @@ fun ExerciseLibraryScreen(
 
                             OutlinedTextField(
                                 value = name,
-                                onValueChange = { name = it },
-                                label = { Text("动作名称") },
+                                onValueChange = { name = it; errorMessage = null; successMessage = null },
+                                label = { Text("动作名称 *(必填)*") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                shape = RoundedCornerShape(8.dp)
+                                shape = RoundedCornerShape(8.dp),
+                                isError = errorMessage != null
                             )
                             Spacer(Modifier.height(10.dp))
 
                             Text("身体部位", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(bottom = 6.dp))
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 BodyPart.entries.forEach { part ->
                                     FilterChip(
                                         selected = selectedBodyPart == part,
                                         onClick = { selectedBodyPart = part },
                                         label = { Text(part.label, fontSize = 11.sp) }
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(10.dp))
+
+                            Text("训练器材", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 6.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Equipment.entries.forEach { equip ->
+                                    FilterChip(
+                                        selected = selectedEquipment == equip,
+                                        onClick = { selectedEquipment = equip },
+                                        label = { Text(equip.label, fontSize = 11.sp) }
                                     )
                                 }
                             }
@@ -112,26 +147,54 @@ fun ExerciseLibraryScreen(
 
                             OutlinedTextField(
                                 value = iconName,
-                                onValueChange = { iconName = it },
-                                label = { Text("图标标识 (如 squat, bench_press)") },
+                                onValueChange = { iconName = it; errorMessage = null; successMessage = null },
+                                label = { Text("图标标识 *(选填，如 squat)*") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 shape = RoundedCornerShape(8.dp)
                             )
                             Spacer(Modifier.height(12.dp))
 
+                            if (errorMessage != null) {
+                                Text(
+                                    text = errorMessage!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                            if (successMessage != null) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(6.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                                ) {
+                                    Text(
+                                        text = successMessage!!,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(8.dp)
+                                    )
+                                }
+                            }
+
                             Button(
                                 onClick = {
-                                    if (name.isNotBlank()) {
-                                        onAddExercise(name, selectedBodyPart, selectedRecordType,
-                                            iconName.ifBlank { name.lowercase().replace(" ", "_") })
-                                        name = ""; iconName = ""
-                                        showAddForm = false
+                                    val finalName = if (name.isNotBlank()) name.trim() else iconName.trim()
+                                    if (finalName.isNotBlank()) {
+                                        onAddExercise(finalName, selectedBodyPart, selectedEquipment, selectedRecordType,
+                                            iconName.ifBlank { finalName.lowercase().replace(" ", "_") })
+                                        successMessage = "✅ 动作「$finalName」已成功保存至动作库！"
+                                        name = ""
+                                        iconName = ""
+                                        errorMessage = null
+                                    } else {
+                                        errorMessage = "⚠️ 请先填写第一行的「动作名称」噢！"
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(8.dp),
-                                enabled = name.isNotBlank()
+                                enabled = true
                             ) {
                                 Text("保存动作")
                             }
@@ -168,12 +231,24 @@ fun ExerciseLibraryScreen(
                                 Spacer(Modifier.width(10.dp))
                                 Column {
                                     Text(exercise.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text(exercise.recordType.label, fontSize = 10.sp,
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("${exercise.bodyPart.label} · ${exercise.equipment.label}", fontSize = 10.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Surface(
+                                            shape = RoundedCornerShape(4.dp),
+                                            color = MaterialTheme.colorScheme.secondaryContainer
+                                        ) {
+                                            Text(exercise.recordType.label, fontSize = 8.sp,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                        }
                                         if (exercise.isPreset) {
                                             Text("预设", fontSize = 10.sp,
-                                                color = MaterialTheme.colorScheme.primary)
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.Medium)
                                         }
                                     }
                                 }

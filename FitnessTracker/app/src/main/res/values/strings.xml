@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">健身记录</string>
+    <string name="app_name">马牛</string>
     <string name="tab_workout">训练</string>
     <string name="tab_progress">进度</string>
     <string name="tab_settings">设置</string>

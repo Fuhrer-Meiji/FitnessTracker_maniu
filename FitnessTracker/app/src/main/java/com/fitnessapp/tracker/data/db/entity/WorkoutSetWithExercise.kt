@@ -7,6 +7,7 @@ data class WorkoutSetWithExercise(
     val workoutNote: String?,
     val exerciseId: Long,
     val exerciseName: String,
+    val bodyPart: String,
     val setNumber: Int,
     val recordType: String,
     val weight: Double?,

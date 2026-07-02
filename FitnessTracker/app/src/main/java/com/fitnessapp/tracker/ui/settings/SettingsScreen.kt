@@ -6,27 +6,42 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Balance
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MonitorWeight
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.fitnessapp.tracker.ui.theme.LocalThemeColors
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.ui.platform.LocalContext
 import com.fitnessapp.tracker.ui.settings.screens.BodyMetricsScreen
 import com.fitnessapp.tracker.ui.settings.screens.ExerciseLibraryScreen
 import com.fitnessapp.tracker.ui.settings.screens.ThemeSettingsScreen
 import com.fitnessapp.tracker.ui.settings.screens.UnitSettingsScreen
+import com.fitnessapp.tracker.data.model.Equipment
 import com.fitnessapp.tracker.ui.theme.THEMES
+import java.io.File
+import java.io.FileOutputStream
 
 enum class SettingsPage {
     MAIN, BODY_METRICS, EXERCISE_LIBRARY, THEME, UNIT
@@ -42,12 +57,13 @@ fun SettingsScreen(
     when (currentPage) {
         SettingsPage.MAIN -> SettingsMainScreen(
             state = state,
-            onNavigate = { currentPage = it }
+            onNavigate = { currentPage = it },
+            viewModel = viewModel
         )
         SettingsPage.EXERCISE_LIBRARY -> ExerciseLibraryScreen(
             onBack = { currentPage = SettingsPage.MAIN },
             exercises = state.exercises,
-            onAddExercise = { name, bodyPart, recordType, iconName -> viewModel.addExercise(name, bodyPart, recordType, iconName) },
+            onAddExercise = { name, bodyPart, equipment, recordType, iconName -> viewModel.addExercise(name, bodyPart, equipment, recordType, iconName) },
             onDeleteExercise = { viewModel.deleteExercise(it) }
         )
         SettingsPage.THEME -> ThemeSettingsScreen(
@@ -73,9 +89,33 @@ fun SettingsScreen(
 @Composable
 private fun SettingsMainScreen(
     state: SettingsUiState,
-    onNavigate: (SettingsPage) -> Unit
+    onNavigate: (SettingsPage) -> Unit,
+    viewModel: SettingsViewModel
 ) {
     val currentTheme = THEMES[state.currentThemeIndex]
+    val context = LocalContext.current
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                if (inputStream != null) {
+                    val destFile = File(context.filesDir, "custom_background.jpg")
+                    val outputStream = FileOutputStream(destFile)
+                    inputStream.use { input ->
+                        outputStream.use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    viewModel.setBgImagePath(destFile.absolutePath)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -150,15 +190,77 @@ private fun SettingsMainScreen(
                 onClick = { }
             )
         }
+
+        Spacer(Modifier.height(14.dp))
+
+        Text("界面背景", style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp))
+        Spacer(Modifier.height(4.dp))
+
+        SettingsGroup {
+            SettingsItemWithSwitch(
+                icon = Icons.Default.Image,
+                title = "显示背景图片",
+                description = "开启后使用图片作为 App 底图",
+                checked = state.bgImageEnabled,
+                onCheckedChange = { viewModel.setBgImageEnabled(it) }
+            )
+
+            if (state.bgImageEnabled) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                SettingsItem(
+                    icon = Icons.Default.AddPhotoAlternate,
+                    title = "选择背景图片",
+                    description = if (state.bgImagePath != null) "已设置自定义图片" else "当前使用默认太空背景",
+                    trailing = {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = {
+                        pickImageLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                )
+
+                if (state.bgImagePath != null) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
+                    SettingsItem(
+                        icon = Icons.Default.Delete,
+                        title = "清除自定义图片",
+                        description = "恢复为默认太空背景",
+                        onClick = {
+                            viewModel.setBgImagePath(null)
+                        }
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
 @Composable
 private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    val themeColors = LocalThemeColors.current
+    val borderGradient = Brush.linearGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.18f),
+            themeColors.primary.copy(alpha = 0.35f),
+            Color.White.copy(alpha = 0.05f)
+        )
+    )
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(0.5.dp, borderGradient)
     ) {
         Column(content = content)
     }
@@ -196,6 +298,51 @@ private fun SettingsItem(
                 }
             }
             trailing?.invoke()
+        }
+    }
+}
+
+@Composable
+private fun SettingsItemWithSwitch(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(description, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
         }
     }
 }
