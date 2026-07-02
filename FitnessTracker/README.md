@@ -1,4 +1,8 @@
-# 🏋️‍♂️ PureLift (FitnessTracker)
+<div align="right">
+  <strong>🇨🇳 中文</strong> | <a href="README_EN.md">🇬🇧 English</a>
+</div>
+
+# 🏋️‍♂️ 马牛 (MaNiu) - 力量训练记录器
 
 <div align="center">
 
@@ -22,10 +26,10 @@
 
 厌倦了市面上各大健身软件烦人的开屏广告、复杂臃肿的社交信息流、以及高昂的会员订阅付费？
 
-**PureLift** 秉持着最朴素的信仰：**举铁是一件纯粹的事**。
+**马牛 (MaNiu)** 秉持着最朴素的信仰：**举铁是一件纯粹的事**。
 * 🚀 **开屏即练**：没有任何多余引导和废话，点开 App 即可开始记录今天的第一组重量与次数。
 * 🛡️ **本地优先 (Offline-First)**：数据 100% 存储于您设备本地的 SQLite (Room) 数据库中，无需联网，无隐私泄露风险，毫秒级响应。
-* 🎨 **极简美学 (Modern UI)**：借鉴高端学习与效率工具的深色系沉浸式视觉排版，搭配灵动微动效与卡片交互，让记录训练如同艺术创作。
+* 🎨 **极简美学 (Modern UI)**：借鉴高端效率工具的深色系沉浸式视觉排版，搭配灵动微动效与卡片交互，让记录训练如同艺术创作。
 
 ---
 
@@ -54,26 +58,12 @@
 
 ---
 
-## 🛠️ 技术架构与现代开发栈 (Tech Stack)
-
-本项目完全采用现代 Android 顶级开发标准构建，遵循 **MVVM / Clean Architecture** 分层规范，保证极致流畅与高可维护性：
-
-| 技术模块 | 使用的技术与工具 | 说明 |
-| :--- | :--- | :--- |
-| **开发语言** | [Kotlin 2.0+](https://kotlinlang.org/) | 100% Kotlin 编写，充分发挥协程 (Coroutines) & Flow 的异步流威力 |
-| **UI 框架** | [Jetpack Compose](https://developer.android.com/jetpack/compose) | 现代声明式 UI，搭配 Material Design 3 设计系统与深色模式 |
-| **本地持久化** | [Room DB + KSP](https://developer.android.com/training/data-storage/room) | 强类型映射本地 SQLite 数据库，实现毫秒级增删改查与联表复杂统计 |
-| **状态与路由** | ViewModel + StateFlow + Navigation | 响应式单向数据流 (UDF)，流畅进行页面级与模态框交互 |
-| **图表可视化** | Custom Compose Canvas | 基于原质化底层 Canvas 深度定制绘制炫酷趋势折线图、阴影渐变与雷达图 |
-
----
-
 ## 🚀 快速开始 (Getting Started)
 
 ### 📱 方式一：免编译开箱即用（推荐广大健身铁友，开屏即练！）
 **不需要懂任何代码编程或安装繁琐的开发软件！**
 1. 在本仓库文件列表中，点击进入 **`APK安装包/`** 文件夹（或点击网页最侧边栏的 **Releases 发行版**）。
-2. 下载最新版本安装包 **`PureLift-v1.0.0-release.apk`** 到您的安卓手机。
+2. 下载最新版本安装包 **`马牛-v1.0.0-release.apk`** 到您的安卓手机。
 3. 点击直接安装，开屏立刻开始热血举铁打卡！
 
 ### 💻 方式二：开发者源码编译与构建
@@ -98,6 +88,20 @@
    ./gradlew assembleDebug
    ```
    生成的 APK 文件位于 `app/build/outputs/apk/debug/app-debug.apk`。
+
+---
+
+## 🛠️ 技术架构与现代开发栈 (Tech Stack)
+
+本项目完全采用现代 Android 顶级开发标准构建，遵循 **MVVM / Clean Architecture** 分层规范，保证极致流畅与高可维护性：
+
+| 技术模块 | 使用的技术与工具 | 说明 |
+| :--- | :--- | :--- |
+| **开发语言** | [Kotlin 2.0+](https://kotlinlang.org/) | 100% Kotlin 编写，充分发挥协程 (Coroutines) & Flow 的异步流威力 |
+| **UI 框架** | [Jetpack Compose](https://developer.android.com/jetpack/compose) | 现代声明式 UI，搭配 Material Design 3 设计系统与深色模式 |
+| **本地持久化** | [Room DB + KSP](https://developer.android.com/training/data-storage/room) | 强类型映射本地 SQLite 数据库，实现毫秒级增删改查与联表复杂统计 |
+| **状态与路由** | ViewModel + StateFlow + Navigation | 响应式单向数据流 (UDF)，流畅进行页面级与模态框交互 |
+| **图表可视化** | Custom Compose Canvas | 基于原质化底层 Canvas 深度定制绘制炫酷趋势折线图、阴影渐变与雷达图 |
 
 ---
 
