@@ -70,14 +70,21 @@
 
 ## 🚀 快速开始 (Getting Started)
 
-### 环境要求
+### 📱 方式一：免编译开箱即用（推荐广大健身铁友，开屏即练！）
+**不需要懂任何代码编程或安装繁琐的开发软件！**
+1. 在本仓库文件列表中，点击进入 **`APK安装包/`** 文件夹（或点击网页最侧边栏的 **Releases 发行版**）。
+2. 下载最新版本安装包 **`PureLift-v1.0.0-release.apk`** 到您的安卓手机。
+3. 点击直接安装，开屏立刻开始热血举铁打卡！
+
+### 💻 方式二：开发者源码编译与构建
+#### 环境要求
 * **Android Studio**: Koala / Ladybug 或更高版本
 * **JDK**: JDK 17+
 * **Gradle**: 8.0+
 * **Min SDK**: Android 8.0 (API 26+)
 * **Target SDK**: Android 14+ (API 34+)
 
-### 本地编译与构建
+#### 本地编译步骤
 1. 克隆本仓库到本地：
    ```bash
    git clone https://github.com/Fuhrer-Meiji/FitnessTracker_maniu.git
